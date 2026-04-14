@@ -1,0 +1,174 @@
+experiment: loong
+system: sliders
+system_config:
+  generate_task_guidelines: false
+  rephrase_question:
+    enabled: true
+    prompt_file: sliders/rephrase_question_component.prompt
+    library_of_guidelines_path: sliders_taxonomy.json  # Enables document type-based extraction guidelines
+  generate_schema:
+    add_extra_information_class: false
+    add_document_text: true
+    generate_schema_type: library_based
+    library_of_guidelines_path: sliders_taxonomy.json
+  extract_schema:
+    decompose_fields: false
+    dedupe_merged_rows: false
+    num_samples_per_chunk: 1
+    is_relevant_chunk: true
+    extract_quotes: true
+  merge_tables:
+    merge_strategy: reconciliation
+    reconciliation:
+      debug_mode: false
+      primary_key_selection:
+        version: v1
+        max_candidates: 10
+        max_inspections_per_candidate: 10
+        max_retries: 3
+      canonicalization:
+        mode: two_pass
+        max_cycles: 20
+        document_level_max_cycles: 5
+        max_retries_per_cycle: 3
+        max_inspection_history: 3
+        inspections_per_field: 50
+        null_handling:
+          max_inspections: 5
+          placeholder_text: UNKNOWN
+          verification:
+            enable: false
+            max_inspections: 5
+      controller_executor_loop:
+        max_iterations: 5
+        max_controller_inspections: 5
+        max_executor_inspections: 5
+        max_sql_attempts: 3
+        verification:
+          enable: true
+          max_inspections: 5
+        context_generator:
+          enable: true
+          model: gpt-4.1
+          max_rows: 20
+      non_pk_canonicalization:
+        enable: true
+        inspections_per_field: 5
+        column_selector:
+          max_inspections: 5
+          excluded_columns:
+            - row_id
+            - page_number
+            - __reconciliation_context__
+            - number_instances
+          excluded_patterns:
+            - _quote
+            - _rationale
+            - _confidence
+      statistics:
+        enable: true
+        filename: reconciliation_stats.json
+  inspect_answer:
+    enable_citation_generation: true
+    enable_reconciliation_stats_verbalization: true
+  check_if_merge_needed: false
+  force_sql: false
+  answer_strategy: sql_inspect
+  models:
+    answer:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    answer_no_table:
+      model: gpt-4.1-mini
+      max_tokens: 8192
+      temperature: 0.0
+    answer_tool_output:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    extract_schema:
+      model: gpt-4.1-mini
+      max_tokens: 32000
+      temperature: 0.0
+    generate_schema:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    merge_tables:
+      model: gpt-4.1
+      max_tokens: 32000
+      temperature: 0.0
+    task_guidelines:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    check_objective_necessity:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    rephrase_question:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    direct_answer:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    force_answer:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    is_relevant_chunk:
+      model: gpt-4.1-mini
+      max_tokens: 8192
+      temperature: 0.0
+    check_if_merge_needed:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    select_guidelines_for_schema:
+      model: gpt-4.1-mini
+      max_tokens: 2000
+      temperature: 0.0
+    select_primary_key:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    canonicalize_fields:
+      model: gpt-4.1-mini
+      max_tokens: 8192
+      temperature: 0.0
+    column_selector:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    context_generator:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    handle_null_pks:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+experiment_config:
+  benchmark_path: /path/to/datasets/loong/loong_processed.jsonl
+  gpt_results_path: None
+  files_dir: /path/to/datasets/loong/loong_docs/
+  specific_ids_csv: sample_data/50_sample_ids_legal_final.csv
+  soft_evaluator_model: gpt-4.1
+  hard_evaluator_model: gpt-4.1
+  num_questions: null
+  random_state: 42
+  specific_ids_csv: sample_data/30_sample_ids_legal_ablation.csv
+  docprocesssing: false
+  document_config:
+    chunk_size: 16000
+    overlap_size: 0
+    title_model: gpt-4.1
+    description_model: gpt-4.1-mini
+    table_summary_model: gpt-4.1-mini
+  filter_by_type: "legal"
+  # filter_by_level: 3
+  # Priority: if specific_ids_csv is provided, it takes precedence over type/level filters
+output_file: loong_sliders_legal_26jan.json

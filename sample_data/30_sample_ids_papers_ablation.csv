@@ -1,0 +1,60 @@
+# Loong Papers Domain Balanced 30-Sample Subset
+# Generated: 2024-12-04
+# Total Papers Dataset Size: 400 questions
+# Random State: 42
+#
+# BALANCING CRITERIA:
+# ===================
+# 1. level (difficulty): 3, 4 - proportionally distributed
+# 2. length (document size): short, medium, long - tertile split
+#
+# DISTRIBUTION STATISTICS:
+# ========================
+# level:
+#   Level 3: 20 samples (66.7%)
+#   Level 4: 10 samples (33.3%)
+#
+# length bins:
+#   Short (<72k chars): 11 samples (36.7%)
+#   Medium (72k-106k chars): 10 samples (33.3%)
+#   Long (>106k chars): 9 samples (30.0%)
+#
+# LENGTH STATISTICS:
+#   Min: 36,817
+#   Max: 227,912
+#   Mean: 90,216
+#   Median: 84,856
+#
+# ID FORMAT: UUID string
+#
+id
+c2eb0280-3201-4791-9ffb-1503841ce9ff
+13a4a371-6339-4c9d-82cf-fc9ab2bb017d
+2fb7e717-7267-4727-832f-384483046ff3
+427e9ff9-c027-4b84-bb8b-d1f78c0d9b21
+ef556128-89d2-4abc-a0ae-2595b35a64bc
+2d98ef9d-dc95-40cd-b613-5aec5366d36b
+e07cfa2a-b4da-44bc-b34d-99ba436d1bac
+0a330b4b-d5b9-471c-a615-bce7d086912f
+9e7bc316-5697-4c37-8f11-f841909c3fa4
+c1dfbe2f-f2ef-4afc-9c7b-1117333a73e2
+e01bf5a6-8431-427c-9042-af73be75fef5
+8bbc51fb-0c0f-4625-a895-3809a8d0265c
+c9297c9e-8fbb-4aa8-a81d-e8643aa20027
+d381d3eb-af5e-46f7-a225-c5d24e300b31
+e407d840-9268-48fb-b8d0-ef0af39bcef6
+7700f2b6-646a-41c5-a542-a9a249f30070
+d9e6a4c6-bc1d-4ecc-a8ba-3f69635f9eb0
+061f53b5-cbb9-4c3d-b00f-0a4369a55de1
+220b92c0-7520-49fc-a16c-8b92b4079565
+5e05231b-0c48-4fc0-b5b5-01fe714d9f91
+a780dc25-81d8-4e0f-b344-5086b8055e04
+fa4814f4-c3ed-4f23-935b-824dc1006c81
+14b44654-5684-4dc0-ada4-215a25c4b56b
+3eb962ea-4984-4dd0-b19b-ca31d0cd871e
+ca0fa197-a774-44db-8f7d-a5a0de9d52a4
+153aaca4-bab8-4bf8-b0b6-795e1969187f
+c46954a7-68aa-4b48-a132-9b4b5a6272b4
+8f80693e-40a2-48ed-8c49-a67ff3359bdd
+02fee5e0-96e9-41b8-8aa4-fdca04109c1a
+4efcb525-bf7a-442e-b767-d3fc30aa1305

@@ -1,0 +1,23 @@
+# instruction
+You will be given a single page from a larger document along with a question. The extraction will be done on this page.
+
+Your task is to determine whether this page contains ANY information that could be useful for answering the question once this page is combined with other pages later.
+
+Treat the page as RELEVANT if it satisfies ANY of the following:
+- It contains a direct or partial answer to the question.
+- It contains definitions, conditions, steps, list items, examples, or descriptions that relate to the question.
+- It narrows down possibilities or provides context that a reconciliation agent could use (e.g., “the first principle is…”, “see Section 3 for…”, “Step 2: …”).
+
+Treat the page as IRRELEVANT only if:
+- None of the content on the page has any meaningful connection to the question, and
+- It only contains metadata values, and doesn't explictly mention useful fields. For example, if the page only contains the title, company name, then ignore this page.
+- There is no text, that could help answer the question in any way during later aggregation.
+
+First, briefly explain your reasoning in natural language. Then say if its relevant or not.
+
+# input
+# Question
+{{question}}
+
+# Document page
+{{document}}

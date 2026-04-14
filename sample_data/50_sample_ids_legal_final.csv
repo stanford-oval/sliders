@@ -1,0 +1,82 @@
+# Loong Legal Domain Balanced 50-Sample Subset (excluding 30 IDs)
+# Generated: 2026-01-27
+# Available Legal Dataset Size: 470 questions (after exclusions)
+# Random State: 42
+#
+# BALANCING CRITERIA:
+# ===================
+# 1. level (difficulty): 1, 2, 3, 4 - proportionally distributed
+# 2. length (document size): short, medium, long - tertile split
+#
+# DISTRIBUTION STATISTICS:
+# ========================
+# level:
+#   Level 1: 10 samples (20.0%)
+#   Level 2: 10 samples (20.0%)
+#   Level 3: 12 samples (24.0%)
+#   Level 4: 18 samples (36.0%)
+#
+# length bins:
+#   Short (<55k chars): 16 samples (32.0%)
+#   Medium (55k-124k chars): 18 samples (36.0%)
+#   Long (>124k chars): 16 samples (32.0%)
+#
+# LENGTH STATISTICS:
+#   Min: 25,138
+#   Max: 255,103
+#   Mean: 110,153
+#   Median: 82,441
+#
+# ID FORMAT: UUID string
+#
+id
+786fdcee-3928-481e-a724-4fda67796b2f
+8b823edb-0c14-4d63-af75-8af76f58a4de
+5a6d86f0-9cdf-43be-9dea-71fb5b6e808b
+ff4a9bc4-3742-40cc-9f3a-7e6fe79ddd1b
+0812e68a-b2df-43d8-9ee1-777ecfe2c520
+70d9e9c5-5c1b-4fe5-bcd3-a0bf9c46bd7f
+5c7b562a-f603-49a4-93c4-bd4a1611030d
+514713f8-0e3f-49f7-a994-c85fe96f2c9d
+86498cea-b26a-4c7b-8bb9-e295135e6676
+6d49003b-6922-4644-afba-c6b63e76ecef
+02149212-63eb-4c91-a50d-ef8c36948eaf
+38273dab-0811-48e0-94a7-636ab1acb552
+9e4b4c5b-937c-4aed-ad70-65fb68281c70
+dde1534f-b1e5-4b2c-8438-67c4e4e8a5fe
+d1e10064-4c0f-4141-8f2d-95a9d481f600
+1b36de5b-425b-4f1e-bc0d-8c51177a6895
+ec687abf-1121-4716-946d-82b7fa166529
+f6a7760f-c09c-42c0-9f72-02f5840a200e
+fafed09b-94ef-4b5f-8b36-5252e1e9a136
+7273463f-ffee-47da-bb8f-5a10b1b74bd6
+8cc235c3-4f58-49d5-bc38-790f804a37a9
+de1b3c88-6d88-4d7d-a5cf-e65d225562fa
+fb4b1c14-5e23-4e2c-8559-ad0ced3244f2
+41f524d8-fa6f-4a42-a25b-4830b92a60bf
+ecca0eee-fd47-49e7-bb4f-1ac220cd9420
+2022d060-5803-4986-a08c-38f482bfb8e7
+b45b29d1-9b91-45f1-b168-f3df01428bda
+cd1d4c0a-b3e9-4a10-8f46-eee4d31c7580
+b6e0f2b3-33d2-49ce-8593-984f6741a042
+3336e301-8970-4ac5-af4b-5386a8b9306f
+b749e2d7-7e89-499f-a45d-e7cc3f0e3574
+85082e73-c0a9-47ec-a7c3-c32708580638
+375c0bba-a360-4414-9ab8-d2e39f9dddb1
+19c55985-7496-4338-88a3-df16e2397536
+00980600-cf5d-4696-8f2b-2e3a8eaad4ed
+a3a1029d-23d6-4614-9886-cb20d43319c2
+81dc8271-a7b8-40a3-84ad-84c52ef5c9d0
+4d6cd4f8-57d2-4a28-9522-6e4cd8bfbbc7
+d2f86999-fd03-46f1-a8c4-8ebc849b055e
+d9113b08-52ef-492c-9e2d-61f78b4d2787
+02dd37de-1a1c-4aec-aa00-5e07275105b1
+88081c3d-cfc6-4fc5-ac8d-6ae77395f2bb
+e23e6b38-37f3-483f-a75c-fe459a60dd5c
+67e5b0df-9c44-4719-bc69-b5fddac2fe63
+cd38232d-1fa9-4f41-af67-6ee9fd3408db
+016dd010-e7dd-4c85-b302-57ede3428464
+b5cdfc83-775a-4163-a075-92d93853eeb8
+d04e9b50-7b7d-4bbf-b266-6e19acf5bbf2
+40b47bd1-abb2-4fd8-bb06-da3c72ac5737
+257aaac9-041b-4643-9769-8c0c85da7736

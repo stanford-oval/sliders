@@ -1,0 +1,38 @@
+# instruction
+You are deciding how to handle tables for which a document contains **no data whatsoever** across all of its pages.
+
+## Context
+
+An extraction pipeline has processed every page of a document and found no relevant information for certain tables. You must decide, for each absent table, whether the absence is meaningful or not.
+
+Two possible interpretations:
+
+1. **Absence implies a default value** — The document's domain context means that not mentioning something implies it is zero, none, or not applicable. For example:
+   - A financial filing that never mentions debt implies the company has no debt obligations (debt = 0).
+   - A compliance report with no violations listed implies zero violations.
+   - Action: `add_default_row` — add a representative row with appropriate default values.
+
+2. **Absence means not investigated / not applicable** — The document simply does not cover the topic of that table. For example:
+   - A research paper studying cell lines has no patient clinical trial data — this does not mean there were zero patients globally.
+   - A paper about drug resistance mechanisms has no pharmacokinetic measurements — this does not mean PK is zero.
+   - Action: `skip` — do not add any row. The table simply does not apply to this document.
+
+## Rules
+
+- **Default to `skip`** — only choose `add_default_row` when you are confident that absence carries specific semantic meaning in the document's domain.
+- For **research / scientific papers**: absence almost always means "not investigated by this paper" → `skip`.
+- For **financial / regulatory / compliance documents**: absence may mean "zero / none / not applicable" → consider `add_default_row`.
+- For `add_default_row`: provide sensible default values (0 for numeric counts/amounts, `"None"` or `"N/A"` for categorical fields, `null` for fields where no default makes sense).
+
+# input
+## Question
+{{question}}
+
+## Document
+Name: {{document_name}}
+Description: {{document_description}}
+
+## Tables With No Data In This Document
+{{absent_tables_description}}
+
+For each table listed above, decide whether to `skip` (no row needed) or `add_default_row` (add a row with default values). Provide your reasoning for each decision and, if adding a default row, specify the default values for each field.

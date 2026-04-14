@@ -1,0 +1,585 @@
+# instruction
+You are performing **primary key canonicalization** on a database table that has been automatically extracted from documents.
+
+## Pipeline Context
+You are at the **primary key canonicalization stage** of the data consolidation pipeline:
+1. ✅ **Extraction**: Data was automatically extracted from documents → table created
+2. ✅ **Primary Key Selection**: Semantic primary key identified for deduplication
+3. ➡️ **Primary Key Canonicalization** (YOU ARE HERE): Standardize primary key fields to enable effective deduplication
+4. ⏭️ **Reconciliation**: Deduplicate and merge rows using the canonicalized primary key (includes general field canonicalization)
+
+## Your Task
+You are processing the field **{{field_name}}**, which is part of the primary key. Your goal is to standardize variations in this field so that rows representing the same observation can be correctly identified as duplicates during reconciliation.
+
+## CRITICAL: Canonicalization is ONLY for Categorical Columns
+
+**Canonicalization should ONLY be applied to categorical columns with a finite set of distinct values that can be meaningfully standardized.**
+
+### Fields to CANONICALIZE (categorical):
+- **Country/Location names**: "USA" vs "United States" vs "U.S."
+- **Date formats**: "2024-01-15" vs "01/15/2024" vs "Jan 15, 2024"
+- **Product categories**: "Electronics" vs "ELECTRONICS" vs "electronics"
+- **Status values**: "Active" vs "ACTIVE" vs "active"
+- **Person names** (structured): "John Smith" vs "Smith, John"
+- **Organization names**: "IBM Corp" vs "IBM Corporation"
+
+### Fields to SKIP (NOT categorical):
+- **Free-text fields**: Questions, descriptions, comments, notes
+- **Unique identifiers**: UUIDs, auto-generated IDs, composite IDs with embedded metadata
+- **Long verbose strings**: Values containing delimiters like "||", embedded metadata like "DATE:", "User:", "Instance:", or full sentences
+- **Natural language content**: Any field where values are sentences or questions rather than categorical labels
+
+### How to Detect Non-Categorical Fields (SKIP these):
+1. **High cardinality with unique values**: If most values appear only once, it's likely free-text
+2. **Long string lengths**: Values averaging >50 characters are usually free-text
+3. **Sentence structure**: Values containing question marks, multiple clauses, or full sentences
+4. **Embedded metadata patterns**: Values with patterns like "DATE: ...", "User: ...", "Instance: ...", "||" delimiters
+5. **Natural language**: If values read like questions or descriptions rather than labels
+
+**IMPORTANT**: If a field contains free-text, questions, or verbose identifier strings with embedded metadata, use the "skip" action immediately. Do NOT attempt to extract or parse components from such fields - that is NOT canonicalization.
+
+**CRITICAL**: You can apply multiple canonicalization transformations in sequence. Follow this iterative workflow:
+
+### Recommended Workflow:
+
+**Phase 1: General Normalization**
+- Apply systematic transformations for common variations:
+  - Punctuation removal
+  - Whitespace normalization  
+  - Case standardization (UPPER)
+  - Common suffix/abbreviation patterns if applicable
+
+**Phase 2: Pattern Discovery and Iterative Fixes**
+After initial normalization:
+1. **ALWAYS inspect distinct values and counts:**
+   ```sql
+   SELECT {{field_name}}, COUNT(*) as cnt 
+   FROM {{table_name}} 
+   GROUP BY {{field_name}} 
+   ORDER BY cnt DESC;
+   ```
+2. **Look for remaining patterns** that indicate variations of the same entity
+3. **Apply targeted canonicalization** for each discovered pattern
+4. **Repeat steps 1-3** after each canonicalization to find new patterns
+5. Continue until no obvious pattern classes remain
+
+**Phase 3: Exhaustive Value-by-Value Verification Loop**
+After pattern-based fixes, examine EVERY value individually to catch edge cases.
+
+**This is an iterative loop - keep repeating until no issues found:**
+
+**Step 1: List ALL distinct values with strategic sorting**
+   ```sql
+   SELECT {{field_name}}, COUNT(*) as cnt 
+   FROM {{table_name}} 
+   WHERE {{field_name}} IS NOT NULL
+   GROUP BY {{field_name}} 
+   ORDER BY {{field_name}}, cnt DESC;  -- or use alternative sorting
+   ```
+   
+   **Choose sorting that helps identify issues:**
+   - `ORDER BY {{field_name}}` - Pure alphabetical (best for spotting adjacent variants)
+   - `ORDER BY LENGTH({{field_name}}), {{field_name}}` - Groups by length (spots abbreviations)
+   - `ORDER BY cnt DESC, {{field_name}}` - Shows most common first
+
+**Step 2: Examine EACH value and write observations**
+   Look at the inspection output value-by-value. In your reasoning, explicitly write what you see:
+   - "San Francisco, CA - has city and state, consistent format"
+   - "San Francisco CA - missing comma separator, needs normalization"  
+   - "Product-A - clean, standard format"
+   - "Product A - clean, consistent format"
+   
+   **For each value, check:**
+   - Special characters? (e.g., `/`, `\`, `#`, `@`, `|`)
+   - Variant of adjacent value?
+   - Any inconsistencies?
+   
+   **YOU MUST WRITE your observations about any problematic values.**
+   
+   **CRITICAL: If you identify similar values that might be variants** (e.g., "Widget A" vs "Widget-A", "Entity Name" vs "Entity Full Name"), you MUST inspect related columns to determine if they represent the same entity. Start with quote/rationale columns, then check headers and document context, and progressively examine all remaining columns if needed. Use inspection queries to examine these relationships before deciding whether to merge or keep them distinct.
+
+**Example of proper Phase 3 Step 2 reasoning:**
+```
+Looking at the alphabetically sorted distinct values from Inspection X:
+- Alpha System - clean
+- Alpha Systems - variant of "Alpha System", differs only in plural
+- Beta Lab - clean
+- Gamma Test - clean
+- Gamma Test/V2 - variant of "Gamma Test", has trailing /V2/ version marker
+- Delta One - clean
+- Echo Process - clean
+
+Issues found:
+1. "Alpha Systems" vs "Alpha System" - singular/plural variation
+2. "Gamma Test/V2" - has trailing /V2/ special characters
+
+I need to apply canonicalization to remove trailing /XX/ patterns and standardize plural forms.
+```
+
+**Example when similar values found (requires checking other columns):**
+```
+Looking at the alphabetically sorted distinct values from Inspection X:
+- Product ABC - appears 5 times
+- Product-ABC - appears 2 times  
+- Product XYZ - clean
+
+Potential issue: "Product ABC" vs "Product-ABC" might be same entity.
+
+Before deciding, I need to check related columns progressively for evidence.
+Step 1 - Check quote/rationale columns:
+
+SELECT product_name, product_name_quote, product_name_rationale, COUNT(*) 
+FROM table
+WHERE product_name IN ('Product ABC', 'Product-ABC')
+GROUP BY product_name, product_name_quote, product_name_rationale;
+
+[After inspection, if inconclusive]
+Step 2 - Check headers and document context:
+
+SELECT product_name, text_header, document_name, COUNT(*) 
+FROM table
+WHERE product_name IN ('Product ABC', 'Product-ABC')
+GROUP BY product_name, text_header, document_name;
+
+[After seeing results showing quote mentions hyphen variant or same document context]
+Confirmed: quote field shows "also known as Product-ABC" or same document/context indicates 
+they're the same entity. I need to canonicalize "Product-ABC" → "Product ABC".
+```
+
+After writing this analysis, proceed to Step 3 to fix the issues.
+
+**Step 3: Fix issues identified in Step 2**
+   **IF YOU IDENTIFIED ANY ISSUES IN STEP 2, YOU MUST USE THE "canonicalize" ACTION, NOT "stop"**
+   
+   When you found issues:
+   - Create targeted inspection to confirm the pattern (optional):
+     ```sql
+     SELECT {{field_name}}, COUNT(*) as cnt
+     FROM {{table_name}}
+     WHERE {{field_name}} ~ '/[A-Z0-9]+/$'  -- Example: ends with /XX/ or /V2/
+     GROUP BY {{field_name}};
+     ```
+   - Apply canonicalization SQL to fix those issues
+   - **GO BACK TO STEP 1** - repeat the verification loop
+
+   **Example Step 3 for simple pattern fix:**
+   ```sql
+   SELECT row_id,
+     CASE
+       WHEN {{field_name}} IS NULL THEN NULL
+       ELSE REGEXP_REPLACE({{field_name}}, '/[A-Z0-9]+/$', '', 'g')  -- Remove /V2/ patterns
+     END AS {{field_name}},
+     other_columns...
+   FROM {{table_name}}
+   ORDER BY row_id;
+   ```
+
+   **Example Step 3 for entity-based fix (after checking related columns):**
+   If you found that "Product-ABC" and "Product ABC" have the same ID, the quote or rationale shows that they are the same or other evidence they're the same entity:
+   ```sql
+   SELECT row_id,
+     CASE
+       WHEN {{field_name}} = 'Product-ABC' THEN 'Product ABC'  -- Merge variant to canonical form
+       WHEN {{field_name}} = 'Item XYZ/V2' THEN 'Item XYZ'  -- Another confirmed case
+       ELSE {{field_name}}
+     END AS {{field_name}},
+     other_columns...
+   FROM {{table_name}}
+   ORDER BY row_id;
+   ```
+
+**Step 4: Stop only when Step 2 finds no issues**
+   Your stop reasoning MUST include:
+   1. "I examined all N distinct values sorted by [strategy]"
+   2. "Special characters checked: [issues fixed or 'none found']"
+   3. "Adjacent variants checked: [pairs fixed or 'none found']"
+   4. **"For similar values, I checked [list of related columns examined] and found [evidence summary]"**
+   5. "Final state: N distinct values, no remaining variations observed"
+
+**CRITICAL**: If your Step 2 reasoning identified ANY issues, you are NOT ALLOWED to stop. You MUST apply canonicalization first.
+
+**CRITICAL**: If you found similar values (e.g., "Product A" vs "Product-A"), you MUST have inspected related columns before stopping. Start with quote/rationale columns, then headers/context, then progressively check all remaining columns until you find evidence or exhaust all options. Simply stating "these are legitimate distinctions" without checking evidence is NOT allowed.
+
+**CRITICAL**: Do NOT rationalize issues away as "valid differences". If you see variants, FIX them. Then verify.
+
+## Inspection Budget
+- **Inspection budget**: You have {{inspections_per_field}} inspections to analyze this field
+- **Process**: inspect → decide to canonicalize or skip
+
+## Inspection Cell Limit
+- Each inspection result is limited to **{{max_inspection_cells}} cells** (rows × columns).
+- If your query returns a table with N columns, you will see at most {{max_inspection_cells}} ÷ N rows.
+- For example, with 10 columns you will see up to 40 rows; with 2 columns you will see up to 200 rows.
+- **To see more data**: select fewer columns, or use `WHERE` / `LIMIT` clauses to focus on specific subsets, then use additional inspections for the rest.
+- **Prefer targeted queries** that select only the columns you need rather than `SELECT *`.
+
+## Why Primary Key Canonicalization Matters
+
+Primary key fields define which rows get merged during deduplication. If these fields have variations:
+- "United States" vs "USA" vs "U.S." → treated as different entities → no deduplication
+- "2024-01-15" vs "01/15/2024" → treated as different dates → no deduplication  
+- "ABC Corp" vs "ABC Corporation" → treated as different entities → no deduplication
+- "Entity Name" vs "Entity Full Name" → if they're the same entity (check related fields) → no deduplication
+
+Canonicalizing primary key fields ensures equivalent values are represented identically, enabling correct deduplication. **Use all available columns** (quotes, rationale, headers, context fields, and any remaining columns) **to determine if similar values represent the same entity.** Check quote/rationale columns first as they often contain the most direct evidence.
+
+## Canonicalization Strategy
+
+Apply **systematic transformations** using regex and string functions to standardize entire classes of variations.
+
+### Transformation Stages
+
+**For string fields:**
+1. Remove punctuation
+2. Normalize whitespace  
+3. Standardize case (UPPER)
+4. Apply domain-specific patterns (suffixes, abbreviations, etc.)
+
+**For date fields:**
+- Convert to standard format (e.g., ISO: YYYY-MM-DD)
+
+**For numeric fields:**
+- Standardize formatting (remove commas, standardize decimal places)
+
+### Implementation Approach
+
+Basic string normalization:
+
+```sql
+UPPER(
+  REGEXP_REPLACE(
+    REGEXP_REPLACE(TRIM(field), '[.,;:\-''&()!?]', '', 'g'),  -- Remove punctuation
+    '\s+', ' ', 'g'  -- Normalize whitespace
+  )
+)
+```
+
+**When you find similar values** (e.g., "Entity Short" and "Entity Full Name"), first inspect related columns to check if they're the same entity:
+
+```sql
+-- Start with quote/rationale columns
+SELECT entity_name, entity_name_quote, entity_name_rationale
+FROM TableName
+WHERE entity_name IN ('Entity Short', 'Entity Full Name')
+GROUP BY entity_name, entity_name_quote, entity_name_rationale;
+```
+
+If quote/rationale columns don't provide enough evidence, check headers and context:
+
+```sql
+-- Check document context and headers
+SELECT entity_name, text_header, document_name, other_contextual_field
+FROM TableName
+WHERE entity_name IN ('Entity Short', 'Entity Full Name')
+GROUP BY entity_name, text_header, document_name, other_contextual_field;
+```
+
+If evidence shows they're the same entity (e.g., quote mentions one is short form of the other, or same document context indicates equivalence), use CASE statements to canonicalize to a single form:
+
+```sql
+SELECT 
+  row_id,
+  CASE
+    WHEN entity_name = 'Entity Full Name' THEN 'Entity Short'
+    ELSE entity_name
+  END AS entity_name,
+  ...
+FROM TableName
+ORDER BY row_id;
+```
+
+For fields with domain-specific patterns, add targeted transformations using nested REGEXP_REPLACE or CASE statements.
+
+## Inspection Strategy
+
+Use targeted queries to detect variation patterns. Start with value distribution, then drill into specific patterns:
+
+**Value distribution (use repeatedly):**
+```sql
+SELECT {{field_name}}, COUNT(*) as cnt 
+FROM {{table_name}} 
+WHERE {{field_name}} IS NOT NULL
+GROUP BY {{field_name}} 
+ORDER BY cnt DESC 
+LIMIT 50;
+```
+This shows you what values exist and helps identify patterns that need fixing.
+
+**After general normalization, use this repeatedly to find remaining issues.**
+
+**Using related fields for canonicalization decisions:**
+When you see similar but not identical values (e.g., "Product ABC" vs "Product-ABC", or full forms vs abbreviated versions), exhaustively check all available columns for evidence they represent the same entity.
+
+**Start with the most informative columns:**
+1. First check quote/rationale columns (these often contain context about the value)
+2. Then check headers, document sources, or context fields
+3. If still uncertain, progressively check remaining columns until you find evidence
+
+**Iterative inspection approach:**
+
+```sql
+-- Step 1: Check quote/rationale columns first
+SELECT {{field_name}}, {{field_name}}_quote, {{field_name}}_rationale, COUNT(*) as cnt
+FROM {{table_name}}
+WHERE {{field_name}} IN ('variant1', 'variant2')
+GROUP BY {{field_name}}, {{field_name}}_quote, {{field_name}}_rationale;
+```
+
+If no clear evidence, expand to more columns:
+
+```sql
+-- Step 2: Check headers, document context
+SELECT {{field_name}}, text_header, document_name, page_number, COUNT(*) as cnt
+FROM {{table_name}}
+WHERE {{field_name}} IN ('variant1', 'variant2')
+GROUP BY {{field_name}}, text_header, document_name, page_number;
+```
+
+If still uncertain, check all remaining columns:
+
+```sql
+-- Step 3: Exhaustive check of all columns
+SELECT {{field_name}}, col1, col2, col3, ..., COUNT(*) as cnt
+FROM {{table_name}}
+WHERE {{field_name}} IN ('variant1', 'variant2')
+GROUP BY {{field_name}}, col1, col2, col3, ...;
+```
+
+If any columns provide evidence that different variations refer to the same entity (e.g., quote indicates one is an alternate form, or same document/context suggests equivalence), apply canonicalization to merge them.
+
+**Punctuation variations:**
+```sql
+SELECT 
+  REGEXP_REPLACE({{field_name}}, '[.,;:\-''&()!?]', '', 'g') as no_punct,
+  COUNT(DISTINCT {{field_name}}) as variant_count
+FROM {{table_name}}
+WHERE {{field_name}} IS NOT NULL
+GROUP BY no_punct
+HAVING COUNT(DISTINCT {{field_name}}) > 1;
+```
+
+**Whitespace variations:**
+```sql
+SELECT
+  REGEXP_REPLACE(TRIM({{field_name}}), '\s+', ' ', 'g') as normalized_space,
+  COUNT(DISTINCT {{field_name}}) as variant_count
+FROM {{table_name}}
+WHERE {{field_name}} IS NOT NULL
+GROUP BY normalized_space
+HAVING COUNT(DISTINCT {{field_name}}) > 1;
+```
+
+**Case variations:**
+```sql
+SELECT
+  UPPER({{field_name}}) as uppercase,
+  COUNT(DISTINCT {{field_name}}) as variant_count
+FROM {{table_name}}
+WHERE {{field_name}} IS NOT NULL
+GROUP BY UPPER({{field_name}})
+HAVING COUNT(DISTINCT {{field_name}}) > 1;
+```
+
+Create custom inspections based on patterns you observe in the data.
+
+## Canonicalization SQL
+
+Apply systematic transformations using regex and string functions.
+
+### Basic Template
+
+```sql
+SELECT 
+  row_id,
+  CASE
+    WHEN {{field_name}} IS NULL THEN NULL
+    ELSE UPPER(
+      REGEXP_REPLACE(
+        REGEXP_REPLACE(TRIM({{field_name}}), '[.,;:\-''&()!?]', '', 'g'),  -- Remove punctuation
+        '\s+', ' ', 'g'  -- Normalize whitespace
+      )
+    )
+  END AS {{field_name}},
+  other_field1,
+  other_field2,
+  ...  -- Include ALL columns
+FROM {{table_name}}
+ORDER BY row_id;
+```
+
+### For Date Fields
+
+```sql
+SELECT 
+  row_id,
+  CAST({{field_name}} AS DATE) AS {{field_name}},  -- DuckDB parses many formats
+  ...
+FROM {{table_name}}
+ORDER BY row_id;
+```
+
+### Using CASE Statements
+
+For NULL handling and pattern-based standardization:
+
+```sql
+SELECT 
+  row_id,
+  CASE
+    WHEN {{field_name}} IS NULL THEN NULL
+    ELSE UPPER(
+      REGEXP_REPLACE(
+        REGEXP_REPLACE(
+          REGEXP_REPLACE(TRIM({{field_name}}), '[.,;:\-''&()!?]', '', 'g'),
+          '\b(VERSION|VER|V|REVISION|REV)\b',
+          CASE 
+            WHEN {{field_name}} LIKE '%VERSION%' THEN 'VER'
+            WHEN {{field_name}} LIKE '%V %' THEN 'VER'
+            WHEN {{field_name}} LIKE '%REVISION%' THEN 'REV'
+            WHEN {{field_name}} LIKE '%REV%' THEN 'REV'
+          END, 'gi'
+        ),
+        '\s+', ' ', 'g'
+      )
+    )
+  END AS {{field_name}},
+  other_fields...
+FROM {{table_name}}
+ORDER BY row_id;
+```
+
+### Critical SQL Requirements
+
+**DuckDB Syntax:**
+- Use nested REGEXP_REPLACE calls - each one wraps the previous result
+- NO pipe operators: `|>` and `->` are not supported in DuckDB
+- String escaping: Use `''` not `\'` (e.g., `'O''Reilly'`)
+- No INITCAP, TITLE, or PROPER functions exist in DuckDB
+
+**Query Structure:**
+- NULL handling: Preserve NULLs explicitly with CASE statements
+- All columns: Include ALL original columns in SELECT
+- Ordering: Always end with `ORDER BY row_id`
+- **CRITICAL - Column naming**: The output column MUST be aliased as exactly `AS {{field_name}}`. DO NOT use intermediate names like `{{field_name}}_pre`, `{{field_name}}_clean`, `{{field_name}}_normalized`, or any other variation. The transformation happens in-place with the same column name.
+
+**String Transformations:**
+- Comprehensive punctuation: Use `[.,;:\-''&()!?]` to catch common punctuation
+- Domain-specific patterns: Add as needed based on inspection results
+
+## Input
+
+**Table Name:** {{table_name}}
+
+**Current Field Being Processed:** {{field_name}}
+This is one of the primary key fields. Focus your inspection and canonicalization on this field only.
+
+**Schema:**
+{{schema}}
+
+**Table Statistics:**
+{{table_stats}}
+
+{% if inspection_history %}
+**Inspection History** (max 3 most recent):
+{{inspection_history}}
+{% else %}
+**Inspection History:**
+No inspections yet
+{% endif %}
+
+**Canonicalization History:**
+{{canonicalization_history}}
+
+**Note:** You can see inspection results above, but previous canonicalization SQL is not shown to keep you focused on the current state of the data.
+
+{% if canonicalization_error_feedback %}
+**Previous Canonicalization Attempt Failed:**
+{{canonicalization_error_feedback}}
+
+**Important**: Review the error above and fix the SQL syntax. Common issues:
+- Using pipe operators `|>` (not supported - use nested function calls)
+- Missing columns in SELECT statement
+- Incorrect string escaping
+{% endif %}
+
+## Current Phase
+{% if inspections_remaining > 0 %}
+**Phase**: Inspection ({{inspections_remaining}} inspections remaining for {{field_name}})
+
+You can inspect {{field_name}} or choose to:
+- Generate canonicalization SQL for {{field_name}}
+- Skip {{field_name}} (if already consistent)
+{% else %}
+**Phase**: SQL Generation (inspection budget exhausted for {{field_name}})
+
+You must now either:
+- Generate canonicalization SQL for {{field_name}}
+- Skip {{field_name}} (if canonicalization not beneficial)
+{% endif %}
+
+## Output Format
+
+Choose one action:
+
+### 1. Inspect Field
+```
+action: "inspect"
+sql: "<inspection SQL query for {{field_name}}>"
+reasoning: "<why you need this inspection>"
+```
+
+### 2. Generate Canonicalization SQL
+```
+action: "canonicalize"
+sql: "<SELECT statement with CASE for canonicalization>"
+reasoning: "<what variations you're standardizing to improve deduplication>"
+```
+
+### 3. Stop Canonicalization
+```
+action: "stop"
+reasoning: "<must include Phase 3 verification results>"
+```
+**Requirements for stopping (from Phase 3, Step 4):**
+1. You completed multiple cycles of Phase 3 Steps 1-3
+2. You examined all N distinct values with strategic sorting
+3. You wrote observations about each value in Step 2 and found no issues
+4. You explicitly state: "Special characters checked: [results]"
+5. You explicitly state: "Adjacent variants checked: [results]"  
+6. You explicitly state: "Final state: N distinct values, no variations observed"
+
+**CRITICAL**: Generic statements like "all seem consistent" or "no variants detected" are NOT SUFFICIENT. You must check each category explicitly.
+
+### 4. Skip Field
+```
+action: "skip"
+reasoning: "<why {{field_name}} is already consistent or doesn't need canonicalization>"
+```
+Use this if the field should not be canonicalized at all.
+
+**SKIP immediately if ANY of these apply:**
+- Field contains free-text questions, descriptions, or sentences
+- Values are long verbose strings (>50 chars average) with embedded metadata
+- Values contain patterns like "DATE:", "User:", "Instance:", "||" delimiters
+- High cardinality with mostly unique values (not categorical)
+- Values are natural language rather than categorical labels
+
+**Canonicalization is NOT for parsing or extracting components from complex strings.**
+
+## Important Notes
+- **CATEGORICAL ONLY**: Only canonicalize categorical fields with finite, standardizable values. Skip free-text, questions, and verbose identifier strings immediately.
+- **Be exhaustive**: After general normalization, keep inspecting distinct values to find remaining patterns
+- **Final verification required**: Before stopping, list EVERY distinct value and reason about potential issues
+- **Iterate**: Apply one transformation → inspect results → find new patterns → repeat
+- **Don't rush to stop**: Only stop when you've thoroughly verified no more patterns exist
+- Use systematic transformations (REGEXP_REPLACE) to handle classes of variations
+- Escape single quotes by doubling: `''` not `\'`
+- Include ALL columns in your SQL
+- Modify only {{field_name}}
+- **CRITICAL**: Output column must be aliased as exactly `AS {{field_name}}` - never use `_pre`, `_clean`, `_normalized` or any suffix
+- Always include `ORDER BY row_id`
+- Preserve NULL values explicitly with CASE statements
+- Don't remove information that distinguishes different entities
+- **NEVER try to parse or extract components** from complex identifier strings - that is not canonicalization
+
+Now, analyze {{field_name}} and decide your next action.

@@ -1,0 +1,29 @@
+experiment: oolong
+system: chain_of_agents
+system_config:
+  chunk_size: 16000
+  chunk_overlap: 0
+  models:
+    worker:
+      model: gpt-4.1-mini
+      max_tokens: 8192
+      temperature: 0.0
+    manager:
+      model: gpt-4.1
+      max_tokens: 2048
+      temperature: 0.0
+experiment_config:
+  benchmark_dir: /path/to/datasets/oolong
+  dataset_variant: synth
+  split: validation
+  context_len: 262144
+  use_context_with_labels: true
+  soft_evaluator_model: gpt-4.1
+  hard_evaluator_model: gpt-4.1
+  random_state: 42
+  num_questions: null
+  docprocesssing: false
+  document_config:
+    chunk_size: 16000
+    overlap_size: 0
+output_file: oolong_coa_256k.json

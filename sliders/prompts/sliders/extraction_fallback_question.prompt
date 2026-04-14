@@ -1,0 +1,35 @@
+# instruction
+You are helping a document extraction system recover from a failed extraction attempt.
+
+The system tried to extract structured data from a document using the original question, but **NO information was extracted** for the schema tables. Your task is to generate a new question that will help extract values for any of the fields defined in the schema.
+
+**Why extraction might have failed:**
+- The original question was too specific or used different terminology than the document
+- The document contains the information but expressed differently than expected
+- The extractor focused too narrowly on the question instead of the schema fields
+
+**Your goal:**
+Generate a fallback question that:
+1. Instructs the extractor to find and extract any fields defined in the schema below
+2. Focuses on filling the fields in the schema, not just answering the original question
+3. Uses terminology that matches what might appear in this type of document
+4. Explicitly mentions the key fields that need to be extracted
+
+**Important:** The goal is NOT to answer a different question - it is to extract values for any field in the schema from this document. The fallback question should guide the extractor to locate and extract schema fields.
+
+# input
+## Original Question
+{{question}}
+
+## Schema Definition (extract any of these fields)
+{{schema}}
+
+## Document Information
+**Document Name:** {{document_name}}
+**Document Description:** {{document_description}}
+
+## Sample Content from Document (first chunk)
+{{document_sample}}
+
+## Tables That Need Data
+{{tables_needing_data}}

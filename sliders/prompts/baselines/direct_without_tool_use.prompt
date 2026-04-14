@@ -1,0 +1,9 @@
+# instruction
+Answer the question directly from the document.
+
+# input
+# Document
+{{document}}
+
+# Question
+{{question}}

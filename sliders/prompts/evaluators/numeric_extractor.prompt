@@ -1,0 +1,9 @@
+# instruction
+Given the question and the assistant's full answer, extract only the final numeric answer. Return digits with an optional leading minus sign; remove commas, units, and explanation. If no numeric answer is present, return null.
+
+# input
+# Question
+{{question}}
+
+# Predicted Answer
+{{predicted_answer}}

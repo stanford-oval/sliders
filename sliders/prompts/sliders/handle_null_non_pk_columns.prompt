@@ -1,0 +1,329 @@
+# instruction
+You are handling NULL values in non-primary-key (data) columns for a table that has been automatically extracted from documents.
+
+Your role is to analyze rows with NULL values in data columns and fill gaps by broadcasting non-NULL values from other rows in the same document.
+
+## Pipeline Context
+
+**Preprocessing completed**:
+1. ✅ **Primary Key Selected**: A semantic primary key has been identified
+2. ✅ **Primary Key Fields Canonicalized**: Primary key values have been standardized
+3. ✅ **NULL Primary Key Handling**: Primary key NULLs have been processed
+4. ➡️ **NULL Non-PK Column Handling** (YOU ARE HERE): Fill gaps in data columns within each document
+
+**This is Phase 2.6** - inserted after PK NULL handling and before Per-PK Group Reconciliation.
+
+After you fill data column gaps, the reconciliation phase will consolidate rows with the same primary key.
+
+## Your Task
+
+You are processing all rows from a specific document to fill NULL values in non-primary-key columns.
+
+**Primary Key for this table**: {{primary_key}}
+
+**Document you're handling**: {{document_name}}
+
+You are seeing:
+- **document_rows** table: {{row_count}} row(s) from this document
+
+**Your goal**: Fill NULL values in data columns by broadcasting non-NULL values from other rows in the SAME document.
+
+## Single Table Available
+
+You have access to one table in your SQL context:
+
+### `document_rows` - All Rows from this Document
+
+This table contains ALL rows from the document. You will:
+1. Identify which data columns have NULLs
+2. Find rows with non-NULL values for those columns
+3. Broadcast non-NULL values to fill gaps
+4. Return ALL rows with NULLs filled where appropriate
+
+## Metadata Column Strategy
+
+This table has metadata columns that document the extraction process:
+- **Columns ending in _quote**: Direct quotes from the source document
+- **Columns ending in _rationale**: Reasoning about why a value was extracted
+- **Provenance columns**: document_name, page_number, text_header, row_id
+
+**Your approach to metadata**:
+
+1. **Use metadata for context**: Read _quote and _rationale columns to understand what values mean and whether broadcasting makes sense
+
+2. **Don't waste effort on metadata-only NULLs**: If a row ONLY has NULLs in metadata columns (_quote, _rationale, page_number, etc.) but all data columns are filled, don't bother filling those metadata NULLs. They're low value.
+
+3. **Fill metadata alongside data**: When filling a data column, also fill its corresponding metadata columns in the same operation.
+
+**Example**:
+```
+Row A: artist_name=NULL, artist_name_quote=NULL, birth_date="1990-05-15"
+Row B: artist_name="John Smith", artist_name_quote="John Smith was born...", birth_date="1990-05-15"
+
+When broadcasting artist_name from Row B to Row A:
+- Fill artist_name with "John Smith"
+- Fill artist_name_quote with "John Smith was born..."
+- Fill artist_name_rationale appropriately (or copy from Row B)
+```
+
+This keeps data and metadata synchronized.
+
+## Decision Framework
+
+For each column with NULLs, decide:
+
+### 1. Skip (No Action Needed)
+**When**:
+- Column is a metadata field (_quote, _rationale) and its data column is already filled
+- Column is provenance (page_number, document_name, text_header, row_id)
+- NULLs represent legitimate absence of information (e.g., some artists have no birth_place)
+- Multiple distinct non-NULL values exist (indicates different entities/events - wait for reconciliation phase)
+
+### 2. Broadcast
+**When**:
+- Multiple rows have the SAME non-NULL value for a column
+- OR: One row has non-NULL value and context suggests it applies to other rows
+- Rows share same primary key values (or similar entity characteristics)
+- Makes semantic sense to fill (e.g., same artist's birth_date across multiple extraction rows)
+
+**Implementation**: Use window functions or subqueries to broadcast values
+
+**Important**: When broadcasting a data column (e.g., `birth_date`), also broadcast its metadata (`birth_date_quote`, `birth_date_rationale`)
+
+### 3. Keep NULL
+**When**:
+- Conflicting non-NULL values exist (different values for same logical entity)
+- Uncertain whether broadcasting is appropriate
+- Better to leave for reconciliation phase
+
+## Progressive Analysis Strategy
+
+Follow these steps:
+
+**Step 1: Inspect document_rows**
+Understand the data structure and identify columns with NULLs.
+
+```sql
+-- View all rows
+SELECT * FROM document_rows LIMIT 10;
+
+-- Count NULLs per column
+SELECT 
+  COUNT(*) as total_rows,
+  COUNT(col1) as non_null_col1,
+  COUNT(col2) as non_null_col2,
+  -- ... for each data column
+FROM document_rows;
+```
+
+**Step 2: Identify primary key patterns**
+See if rows share the same entity (same PK values).
+
+```sql
+-- Group by primary key to see entities
+SELECT 
+  wikidata_id,
+  artist_name, 
+  industry,
+  COUNT(*) as row_count
+FROM document_rows
+GROUP BY wikidata_id, artist_name, industry;
+```
+
+**Step 3: Analyze specific columns with NULLs**
+For each column that has NULLs, check the distinct non-NULL values.
+
+```sql
+-- Check distinct values for a column
+SELECT col_name, COUNT(*) as cnt
+FROM document_rows
+WHERE col_name IS NOT NULL
+GROUP BY col_name;
+
+-- See which rows have NULLs vs non-NULLs
+SELECT 
+  row_id,
+  wikidata_id,
+  artist_name,
+  industry,
+  col_with_nulls,
+  col_with_nulls_quote,
+  col_with_nulls_rationale
+FROM document_rows
+ORDER BY col_with_nulls IS NULL DESC;
+```
+
+**Step 4: Generate processing SQL**
+Generate SQL to fill NULLs where appropriate.
+
+## Input
+
+Table name: {{table_name}}
+
+Document you're processing: {{document_name}}
+
+## Schema
+{{schema}}
+
+## Table Statistics
+
+**document_rows statistics:**
+{{document_rows_stats}}
+
+## Your Inspection History
+{{inspection_history}}
+
+## Status
+
+{% if must_process_now %}
+⚠️ WARNING: No more inspections allowed. You MUST process now (action: "process").
+{% else %}
+**Inspection Budget**: You can inspect {{inspections_remaining}} more time(s), or choose to process now.
+{% endif %}
+
+# Task
+
+Decide: should you inspect more, or are you ready to process the rows?
+
+**If you need more information**, output:
+- action: "inspect"
+- sql: Your inspection SQL query (SELECT on document_rows)
+- reasoning: Why you need this inspection
+
+**Example inspections:**
+```sql
+-- View all rows with specific columns
+SELECT row_id, artist_name, birth_date, birth_place FROM document_rows;
+
+-- Check NULL patterns
+SELECT 
+  COUNT(*) as total,
+  COUNT(birth_date) as has_birth_date,
+  COUNT(birth_place) as has_birth_place,
+  COUNT(debut_year) as has_debut_year
+FROM document_rows;
+
+-- Find rows with same PK
+SELECT 
+  wikidata_id, artist_name, industry,
+  COUNT(*) as cnt,
+  COUNT(DISTINCT birth_date) as distinct_birthdates,
+  COUNT(DISTINCT debut_year) as distinct_debut_years
+FROM document_rows
+GROUP BY wikidata_id, artist_name, industry;
+
+-- Check metadata to understand context
+SELECT 
+  row_id,
+  birth_date,
+  birth_date_quote,
+  birth_date_rationale
+FROM document_rows
+WHERE birth_date IS NOT NULL OR birth_date_quote IS NOT NULL;
+```
+
+**If you're ready to process**, output:
+- action: "process"
+- sql: Your processing SQL that returns ALL rows with NULLs filled where appropriate
+- reasoning: Explain your broadcasting strategy for each column
+
+**Processing SQL Requirements:**
+- SELECT from `document_rows` table as your base
+- Fill NULL data columns using window functions (e.g., MAX/MIN OVER) or COALESCE with subqueries
+- When filling a data column, also fill its corresponding _quote and _rationale columns
+- Return ALL rows (don't discard any rows)
+- Preserve all original columns in the output
+
+**Processing SQL Patterns:**
+
+```sql
+-- Pattern A: Selective filling - choose specific rows for specific columns
+SELECT
+  row_id,
+  page_number,
+  document_name,
+  text_header,
+  -- Primary key columns (already filled)
+  wikidata_id,
+  artist_name,
+  industry,
+  -- Fill birth_date from row 42 (has most reliable birth_date)
+  COALESCE(birth_date, (SELECT birth_date FROM document_rows WHERE row_id = 42)) AS birth_date,
+  COALESCE(birth_date_quote, (SELECT birth_date_quote FROM document_rows WHERE row_id = 42)) AS birth_date_quote,
+  COALESCE(birth_date_rationale, (SELECT birth_date_rationale FROM document_rows WHERE row_id = 42)) AS birth_date_rationale,
+  -- Fill debut_year from row 38 (has different source with debut info)
+  COALESCE(debut_year, (SELECT debut_year FROM document_rows WHERE row_id = 38)) AS debut_year,
+  COALESCE(debut_year_quote, (SELECT debut_year_quote FROM document_rows WHERE row_id = 38)) AS debut_year_quote,
+  COALESCE(debut_year_rationale, (SELECT debut_year_rationale FROM document_rows WHERE row_id = 38)) AS debut_year_rationale,
+  -- Other columns remain unchanged
+  birth_place,
+  birth_place_quote,
+  -- ... etc
+FROM document_rows;
+
+-- Pattern B: Broadcast same value to all rows with same PK
+SELECT
+  row_id,
+  page_number,
+  document_name,
+  text_header,
+  wikidata_id,
+  artist_name,
+  industry,
+  -- If all rows with this PK should have same birth_date, broadcast it
+  COALESCE(
+    birth_date,
+    MAX(birth_date) OVER (PARTITION BY wikidata_id, artist_name, industry)
+  ) AS birth_date,
+  COALESCE(
+    birth_date_quote,
+    MAX(birth_date_quote) OVER (PARTITION BY wikidata_id, artist_name, industry)
+  ) AS birth_date_quote,
+  -- For debut_year, maybe only fill for specific rows
+  CASE
+    WHEN row_id IN (101, 102, 103) THEN COALESCE(debut_year, (SELECT debut_year FROM document_rows WHERE row_id = 105))
+    ELSE debut_year
+  END AS debut_year,
+  -- Other columns
+  birth_place,
+  -- ... etc
+FROM document_rows;
+
+-- Pattern C: Conditional filling based on inspection results
+SELECT
+  row_id,
+  wikidata_id,
+  artist_name,
+  industry,
+  -- Only fill birth_date if there's exactly one distinct value
+  CASE
+    WHEN birth_date IS NULL 
+      AND (SELECT COUNT(DISTINCT birth_date) FROM document_rows WHERE birth_date IS NOT NULL) = 1
+    THEN (SELECT birth_date FROM document_rows WHERE birth_date IS NOT NULL LIMIT 1)
+    ELSE birth_date
+  END AS birth_date,
+  -- Corresponding metadata
+  CASE
+    WHEN birth_date IS NULL 
+      AND (SELECT COUNT(DISTINCT birth_date) FROM document_rows WHERE birth_date IS NOT NULL) = 1
+    THEN (SELECT birth_date_quote FROM document_rows WHERE birth_date IS NOT NULL LIMIT 1)
+    ELSE birth_date_quote
+  END AS birth_date_quote,
+  -- Fill debut_year from a different specific row (row 88)
+  COALESCE(debut_year, (SELECT debut_year FROM document_rows WHERE row_id = 88)) AS debut_year,
+  COALESCE(debut_year_quote, (SELECT debut_year_quote FROM document_rows WHERE row_id = 88)) AS debut_year_quote,
+  -- Other columns
+  birth_place,
+  -- ... etc
+FROM document_rows;
+```
+
+**Critical Guidelines:**
+1. Return ALL rows (don't discard any)
+2. Be selective: Choose SPECIFIC rows to fill from (e.g., row_id = 42) based on your inspection
+3. When filling a data column, fill its metadata (_quote, _rationale) from the SAME source row
+4. Different columns can be filled from different source rows
+5. Don't bother with metadata-only NULLs (low value)
+6. Use primary key to identify rows that represent the same entity
+7. Only broadcast when it makes semantic sense
+8. If conflicting values exist, leave as NULL for reconciliation phase

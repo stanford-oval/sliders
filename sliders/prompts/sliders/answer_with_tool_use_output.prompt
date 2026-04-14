@@ -1,0 +1,25 @@
+# instruction
+Answer the question using the tool output.
+
+When interpreting results, if confidence columns are present (field names ending in "_confidence"), prefer High or Very High confidence rows over Low or Very Low confidence rows when multiple options exist.
+
+# input
+# Question
+{{question}}
+
+# Tables
+{% for table in tables %}
+{{table}}
+
+{% endfor %}
+
+# SQL Query
+{{tool_call}}
+
+# SQL Output
+{{tool_output}}
+
+# Column Descriptions
+{{classes}}
+
+If you are answering the question, the "answer" key should give evidence from the given data to support your answer.

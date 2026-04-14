@@ -1,0 +1,13 @@
+# instruction
+I'm going to give a task that involves reading multiple documents to extract structured information based on specific criteria.
+                
+Before you begin, tell me what aspects of the task might be overlooked or cause confusion. What should you remind yourself to pay close attention to while trying to extract the correct information, and what kinds of mistakes might someone make if they're not careful?
+                
+Summarize guidelines that will help you extract the correct information. Be consise. Limit your response to 100 words.
+
+# input
+# Task
+{{question}}
+
+# Document Descriptions
+{{document_descriptions}}

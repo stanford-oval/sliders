@@ -1,0 +1,19 @@
+# instruction
+Your task is to answer the given question.
+You will be given information extracted from one or multiple documents as DuckDB SQL tables.
+
+To answer the question, you should first verbalize the table and then answer the question.
+
+# input
+# Question
+{{question}}
+
+# Tables
+{% for table in tables %}
+{{table}}
+
+{% endfor %}
+
+
+# Column Descriptions
+{{classes}}

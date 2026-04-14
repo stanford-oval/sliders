@@ -1,0 +1,9 @@
+# instruction
+Use the extracted notes to answer the question. Synthesize the evidence into a direct answer. If the notes do not contain enough information, say `I don't know`. Do not invent data.
+
+# input
+# Question
+{{question}}
+
+# Extracted Notes
+{{extracted_context}}

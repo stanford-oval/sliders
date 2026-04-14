@@ -1,0 +1,239 @@
+# instruction
+Given a schema and a single page, emit rows per table using the schema’s field names/types—and per-field evidence:
+- value (normalized to the field’s unit/scale). If scale is None and the page content says 1.3 billion, then write the value as 1300000000.
+{% if extract_quotes %}
+- quote (largest contiguous exact text; list of strings or None)
+{% else %}
+- quote (always null; do not extract snippets when quotes are disabled)
+{% endif %}
+- rationale (why this value; include table headers/context if from a table)
+- is_explicit (boolean)
+- confidence (string; one of "Very High", "High", "Medium", "Low", "Very Low")
+
+Confidence Rubric:
+- Very High
+  - The value is explicitly stated verbatim or via a trivial transformation (e.g., unit normalization) in the current text span, unambiguously refers to the target entity, and fully satisfies the schema field definition.
+  - Surrounding context confirms the interpretation without inference.
+- High
+  - The value is explicitly stated, but either (a) requires light interpretation to map to the schema (e.g., paraphrase, implicit unit), or (b) could plausibly appear elsewhere in the document, even though the current span provides sufficient evidence.
+  - Entity reference and schema alignment are still clear.
+- Medium
+  - The value is not explicitly stated but can be reasonably inferred from the text through interpretation, aggregation, or implicit assumptions.
+  - The match to the schema is partial or approximate, and alternative interpretations are plausible.
+- Low
+  - The value is a speculative guess derived from weak textual cues, heuristics, or world knowledge.
+  - Evidence is indirect, incomplete, or ambiguous, and the extractor believes the value is likely incorrect.
+  - For entity relationships: Inferred from abbreviated references (acronyms, short names, citation numbers) without the full entity name appearing on the page.
+- Very Low
+  - No supporting evidence exists in the text.
+  - The value is a placeholder, default, or fabrication inserted to satisfy schema completeness and should not be trusted or used downstream.
+
+{% if enable_verbalization_instructions %}
+## Critical: Exhaustive List Processing
+
+**APPLIES TO:** Any section containing a numbered or bulleted list of related entities, including but not limited to:
+- Sections titled "References", "Bibliography", "Citations", "Works Cited", "Related Work", "Dependencies", "Components", "Exhibits", "Appendices"
+- Dependency lists, package catalogs, component inventories, related entity lists
+- Any enumerated list where entities might be mentioned
+
+**REQUIRED PROCESS:**
+1. **In `verbalization` field**: List ALL target entities from the question you're looking for
+   - **CRITICAL**: Include EVERY entity mentioned ANYWHERE in the question—this includes the primary entity being analyzed AND all comparison/related entities
+   - Example: If the question asks about relationships involving entities X, Y, and Z, then your target entities list should be [X, Y, Z]—NOT just a subset
+   - When processing ANY document, check for ALL entities from the question, regardless of which document you're currently analyzing
+2. **Identify the list boundaries** - Find where the list starts and ends
+3. **Process EVERY entry sequentially** - Go through each numbered/bulleted item one by one (e.g., [1], [2], [3]... to the last entry)
+4. **In `verbalization` field**: For EACH AND EVERY entry, you MUST document:
+   - **EXPLICITLY LIST EACH ENTRY** - Write: "Entry [N] 'identifier/name found here' - MATCH to <target entity name>" OR "Entry [N] 'identifier/name found here' - no match"
+   - **DO NOT SUMMARIZE** - List each entry individually even if there are 100+ entries
+   - **CRITICAL**: Even if you don't see matches initially, you MUST list every single entry. Saying "Checked entries [1]-[92], none match" or "The section lists many entries but none match" is WRONG - you must list each entry explicitly
+5. **In `tables` field**: Extract a row immediately when you find a match (High/Very High confidence, with concise rationale)
+   - **CRITICAL**: For EVERY entry you marked as "MATCH" in your verbalization, you MUST create a corresponding extraction row. The verbalization is your working notes; the tables section is where you record the actual data. DO NOT identify matches in verbalization and then fail to extract them.
+6. **Continue to the end** - Do not stop after finding matches; process every remaining entry
+7. **In `verbalization` field**: Confirm you reached and checked the final entry (e.g., "Completed all 92 entries")
+8. **CRITICAL - Understanding Entity Relationships in Lists**: When processing a source entity's list of related entities:
+   - Finding target entity Y in source entity X's list means "X relates to Y" - EXTRACT THIS
+   - Whether Y appears in the question is IRRELEVANT to whether this is a valid relationship
+   - ONLY skip extraction when source equals target (i.e., X's list contains X itself - a self-loop, likely a data error)
+   - ✅ Correct: Processing "Entity Alpha"'s related items list, found "Entity Beta" (where Beta is mentioned in the question) → Extract "Alpha relates to Beta"
+   - ✅ Correct: Processing "Component A"'s dependency list, found "Component B" (from question) → Extract the dependency relationship
+   - ✅ Correct: Processing "Site 001"'s supplier catalog, found "Supplier Corp" (from question) → Extract the supplier relationship
+   - ❌ Incorrect: Processing "Item X"'s related items list, found "Item X" itself → Skip (self-loop)
+   - **WRONG reasoning**: "The found entity is mentioned in my question, therefore this is self-referential" - NO. Self-reference means the source entity points to itself, not that the target appears in the question.
+
+Examples: 
+- If you see a section with 50 entries (e.g., a list with [1] through [50]), and the question asks about 5 specific entities:
+  - ✅ Correct in `verbalization`: "Target entities: [Entity A, Entity B, Entity C, Entity D, Entity E]. Entry [1] 'Author et al., 2020. Some description about topic X' - no match. Entry [2] 'Source, 2021. Entity A: A comprehensive analysis' - MATCH to Entity A. Entry [3] 'Creator, 2019. Another description' - no match. ... Entry [50] 'Final Author, 2023. Final description' - no match. Completed all 50 entries."
+  - ✅ Correct in `tables`: Extract rows for all matches found
+- If you see an exhibits list with 15 items and question asks about 3 companies:
+  - ✅ Correct in `verbalization`: "Target entities: [Acme Corp, Widget Inc, Gadget LLC]. Entry [1] 'Exhibit 1.1: Lease Agreement with Property Owner' - no match. Entry [2] 'Exhibit 2.1: Supply Contract with Acme Corp' - MATCH to Acme Corp. ... Entry [15] 'Exhibit 5.4: Insurance Policy' - no match. Completed all 15 entries."
+- ❌ Wrong: "The section lists many entries, but none of the target entities appear explicitly" (This is a SUMMARY without listing entries)
+- ❌ Wrong: "Checked entries [1]-[50]. Found matches for Entity A and Entity B." (This is a SUMMARY, not entry-by-entry verbalization)
+- ❌ Wrong: Stop after finding 2 matches in first 10 entries
+- ❌ Wrong: "List entries [1]-[92]. None match." (Must list each entry explicitly: "[1] ... - no match. [2] ... - no match.")
+{% endif %}
+
+Output guidelines:
+- Produce one row per real item visible on the page (e.g., per counsel-argument, per entity-period-metric).
+- Strictly follow the schema, do not add any new field/key.
+- If the page contains multiple distinct items, output multiple rows.
+{% if extract_quotes %}
+- For any field, if the given page does not have any relevant information, set the value and quote to null.
+{% else %}
+- For any field with no relevant information, set value to null. Quote extraction is disabled, so leave `"quote": null` for every field.
+{% endif %}
+- Consider the summary if provided to contextualize the extraction.
+- IMPORTANT: If the question below contains a "FOCUS:" directive specifying a particular row or item to extract, you MUST extract ONLY that specific row/item. Ignore all other rows/items in the page. This focused extraction is used when processing information-dense pages to ensure accuracy and prevent confusion between similar items.
+
+Extraction and Normalization Rules:
+- Page-local only. Use only the current page’s content.
+- Rationale.
+    - Start with rationale, and reason about which parts of the text correspond to the field 
+    - 1–3 sentences: how you located/parsed it; if from a table, include headers and relevant table context.
+    - Note any normalization you performed (e.g., “converted $1.23B to 1230 millions USD”).
+- Normalization is mandatory.
+    - Convert magnitudes into the field’s target scale (e.g., target millions: 1,200,000→1.2; 1.23B→1230).
+    - Convert unit (e.g., currency) to the target if specified; else keep as_is.
+    - Normalize percent per the field’s rule (0_100 vs 0_1) and date per date_format.
+- Type safety. Coerce to the declared data_type; on failure, set value = null.
+{% if extract_quotes %}
+- Quote (evidence).
+    - Provide a list with the largest contiguous exact substring that supports the value (often a single element).
+    - Preserve punctuation/case; no ellipses or paraphrase.
+    - If truly not present on the page → quote = null.
+    - Remember if quote is not present, then the value should also be None.
+{% else %}
+- Quote (evidence) is disabled. Always emit `"quote": null` for every field; do not copy supporting text into the output.
+{% endif %}
+- is_explicit.
+    - True if the underlying value appears explicitly on the page (including trivial deterministic normalization like unit/scale conversion or parentheses-to-negative).
+    - False if it requires arithmetic beyond normalization (e.g., sums, differences, ratios) or approximations/inference.
+- Duplicates vs distinct items.
+    - Multiple mentions of the same item: choose the most precise/authoritative instance on that page (e.g., structured table over prose).
+    - Distinct items: separate rows.
+- Relationship schemas with main entity:
+    - If the schema has a primary entity field (e.g., "entity_name", "source_identifier"), populate it consistently in every row.
+    - For relationship fields: never leave the primary/source entity field null. Only set secondary/target fields to null when no such relationship is present.
+    {% if enable_verbalization_instructions %}
+    - **ACTION REQUIRED for structured list sections**: When you encounter enumerated lists containing entity relationships (such as dependency catalogs, related entity lists, component inventories, reference lists, or bibliographic entries), follow the "Critical: Exhaustive List Processing" instructions above. This includes listing all target entities, processing every entry individually without summarization, and understanding that finding a question entity in another document's list is a valid relationship to extract.{% endif %}
+
+# Example
+Suppose schema has metric_value (decimal, unit=USD, scale=None) and the page says: “Revenue was $1.23 billion in 2023.”
+
+```JSON
+{
+  "verbalization": "Not a references section. Extracting direct field values from page content.",
+  "tables": [
+    {
+      "name": "Financials",
+      "rows": [
+        {
+          "fields": {
+            "entity_name": {
+              "rationale": "The page header mentions the information hence I can use it to extract the entity name. Taken from page header.",
+              "value": "Acme Inc.",
+              "quote": ["ACME INC."],
+              "is_explicit": true,
+              "confidence": "Very High"
+            },
+            "period_end": {
+              "rationale": "The period end is mentioned but it is not in the required format. I need to normalized to YYYY-MM-DD. The period was mentioned in the page title",
+              "value": "2023-12-31",
+              "quote": ["For the year ended December 31, 2023"],
+              "is_explicit": true,
+              "confidence": "Very High"
+            },
+            "metric_name": {
+              "rationale": "Table 2 mentions the metrics. The Metric label in the caption of the table talking about balance sheet.",
+              "value": "revenue",
+              "quote": ["Revenue"],
+              "is_explicit": true,
+              "confidence": "Very High"
+            },
+            "metric_forecast": {
+              rationale: "The text mentions the current and past revenue. However, there is no mention of future revenue. Hence I should set the value and quote to None.,
+              "value": null,
+              "quote": null,
+              "is_explicit": false,
+              "confidence": "Very Low"
+            },
+            "metric_value": {
+              "rationale": "The revenue is mentioned in in section Commentry. However, it says $1.23 billion. Since the scale is None, I should make it 1230000000. Converted $1.23B to 1230000000 with scale='None', unit='USD'.",
+              "value": 1230,
+              "quote": ["Revenue was $1.23 billion in 2023"],
+              "is_explicit": true,
+              "confidence": "Very High"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+# input
+The following question has been asked by the user over the whole document set:
+<Question Start>
+{{question}}
+<Question End>
+
+The Relationship Schema for this question has already been defined.
+Your task is to populate this schema using only the information available in the document. The extracted data will later be aggregated with information from other pages to generate the final answer.
+
+{% if previous_chunk_summary %}
+# Summary of the pages till now
+{{previous_chunk_summary}}
+{% endif %}
+
+<Document Start>
+# The name of the CURRENT DOCUMENT you are extracting from is:
+{{document_name}}
+
+# Document Descriptions
+{{document_description}}
+
+# Page Content
+{{document}}
+<Document End>
+
+# Relationship Schema
+{{schema}}
+
+# Field Extraction Guidelines
+{% if extraction_guidelines %}
+The schema includes specific extraction guidelines for certain fields. Follow these instructions when extracting:
+
+{{extraction_guidelines}}
+{% endif %}
+
+# Output Format
+
+Your output should be a JSON object with these fields:
+{% if enable_verbalization_instructions %}
+**IMPORTANT**: Verbalization is your working notes to show your reasoning. The `tables` array is where you record your actual extractions. Any match you identify in verbalization MUST have a corresponding row in tables.
+
+1. **verbalization** (optional string): For sections with enumerated lists (such as dependency lists, related entity lists, "References", "Bibliography", "Citations", component inventories, or any numbered/bulleted entity listings), describe your systematic checking process:
+   - List ALL entities mentioned ANYWHERE in the question—include the primary entity AND all comparison/related entities (e.g., if the question asks about relationships involving entities X, Y, and Z, list [X, Y, Z])
+   - For each entry in the list: entry number/identifier, name/title found, match determination (which target entity it matches, or "no match")
+   - **DO NOT SUMMARIZE**: You must list each entry individually, even if none match. Saying "checked all entries, none match" is insufficient.
+   - Confirm you reached the final entry
+   
+   **IMPORTANT for inline references (non-list sections):**
+   - When processing abbreviated inline identifiers (e.g., short codes, numeric references), DO NOT verbalize speculative mappings to full entity names.
+   - Only report matches when the entity name itself appears on the page.
+   - ❌ WRONG: "The document mentions identifier X in context Y, which corresponds to 'Full Entity Name Z'"
+   - ✅ CORRECT: "The document mentions identifier X but does not include the full entity name - no match"
+   
+   Examples: 
+   - "Target entities: ['Entity A Title', 'Entity B Title', 'Entity C Title']. Reference list section entries [1]-[25]. Entry [1] 'ID-001. Item X description' - no match. Entry [2] 'ID-002. Entity A Title: A comprehensive analysis' - MATCH to 'Entity A Title'. Entry [3] 'ID-003. Another item description' - no match. ... Entry [25] 'ID-025. Final item' - no match. Completed all 25 entries."
+   - "Target entities: ['Supplier A', 'Supplier B', 'Supplier C']. Dependencies section entries [1]-[18]. Entry [1] 'Component X from Vendor Alpha' - no match. Entry [2] 'Raw materials from Supplier A' - MATCH to 'Supplier A'. Entry [3] 'Packaging from Provider Beta' - no match. ... Entry [18] 'Logistics from Carrier Gamma' - no match. Completed all 18 entries."
+
+2. **tables** (required array): The extracted data following the schema above, with concise rationales per field.
+   
+   **CRITICAL**: If you identified ANY matches (marked as "MATCH") in your verbalization, you MUST create a corresponding extraction row in the tables array for EACH match. The verbalization is your working notes—the tables section is where you record the actual extractions. Do NOT skip creating rows for matches you identified during verbalization.
+{% else %}
+1. **tables** (required array): The extracted data following the schema above, with concise rationales per field.
+{% endif %}
+
+Fill out the schema above based on the Document content.

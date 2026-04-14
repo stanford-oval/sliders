@@ -1,0 +1,62 @@
+# Loong Finance Domain Balanced 30-Sample Subset
+# Generated: 2024-12-04
+# Total Finance Dataset Size: 700 questions
+# Random State: 42
+#
+# BALANCING CRITERIA:
+# ===================
+# 1. level (difficulty): 1, 2, 3, 4 - proportionally distributed
+# 2. length (document size): short, medium, long - tertile split
+#
+# DISTRIBUTION STATISTICS:
+# ========================
+# level:
+#   Level 1: 6 samples (20.0%)
+#   Level 2: 9 samples (30.0%)
+#   Level 3: 11 samples (36.7%)
+#   Level 4: 4 samples (13.3%)
+#
+# length bins:
+#   Short (<78k chars): 10 samples (33.3%)
+#   Medium (78k-130k chars): 9 samples (30.0%)
+#   Long (>130k chars): 11 samples (36.7%)
+#
+# LENGTH STATISTICS:
+#   Min: 32,423
+#   Max: 265,472
+#   Mean: 125,049
+#   Median: 113,884
+#
+# ID FORMAT: UUID string
+#
+id
+fc47bf60-89e0-428d-8d1c-a5a54d3585bf
+97fd8606-86fa-4288-95fe-2a06776f3ba3
+b5895a78-9b96-47d3-aa99-3cc3eb9fbaa1
+a015ce91-e273-4929-a187-9f68a7692b89
+878464c5-4129-4637-8312-9395beeef2ad
+02af76bb-9b93-4363-a56e-56cec355a2b6
+73784af5-c7f2-41de-8061-00fb2859ef29
+93040973-e3a2-4861-8dd7-650f7534d18e
+657baaa3-5cd1-4e08-981c-b845aa4ad061
+14923fcc-93a6-4f25-8b3e-5d0b5a000b7b
+0cb5a4ea-8679-445f-bfc2-9a85c7bf31d0
+f31b4133-f32a-4c13-9b7d-a61aede275a5
+dfb37b0b-79eb-427c-bd56-7b894b026217
+80dcb2ae-efe1-489f-be10-9a015ed94be9
+e0ca7acb-28c7-4175-8b5e-2479f0b19cb3
+b87af470-b739-4b5e-812b-d38c8522f2cd
+528cd19a-a842-44e2-af9b-33a4d2b19eb4
+59a036ea-e46a-4c1a-8386-09a8264f3ad8
+cda17772-2561-43e5-bcf0-c0c8022c13ec
+b1d53165-f4ba-44ef-814b-a2cc6937ffc4
+23f9a12d-c10b-4803-aeeb-563dd0c9e816
+53d2d212-3782-4e4c-9cd6-16ab6f26c0bd
+1c73a35d-45d8-45e0-80ef-9b6f663f805a
+918dbcc3-6f1c-4fe6-8a5f-3e2ad5f45ebf
+9869aafb-211d-470f-a83d-58e849c43e35
+62d35f36-3597-4f04-b466-db795e55d0b1
+6be45a41-dc08-47f1-a83c-95ac889c4eae
+4d0e14de-3ca7-418c-8ed0-bc97acbe6cec
+498d75fa-3b3b-4481-9f04-45341f076c5f
+b067b1c0-c9a9-449d-80eb-e9231caec5a1

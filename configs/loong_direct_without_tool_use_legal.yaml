@@ -1,0 +1,23 @@
+experiment: loong
+system: direct_no_tool_use
+system_config:
+  models:
+    tool_use:
+      model: gpt-4.1
+      max_completion_tokens: 8192
+      temperature: 0.0
+    answer:
+      model: gpt-4.1
+      max_completion_tokens: 8192
+      temperature: 0.0
+experiment_config:
+  benchmark_path: /path/to/datasets/loong/loong_processed.jsonl
+  gpt_results_path: /path/to/datasets/loong/results/gpt-4_oracle_reverse.jsonl
+  files_dir: /path/to/datasets/loong/doc/
+  soft_evaluator_model: gpt-4.1
+  hard_evaluator_model: gpt-4.1
+  specific_ids_csv: sample_data/50_sample_ids_legal.csv
+  num_questions: null
+  random_state: 42
+  docprocesssing: False
+output_file: loong_direct_without_tool_use_gpt-4.1_legal.json

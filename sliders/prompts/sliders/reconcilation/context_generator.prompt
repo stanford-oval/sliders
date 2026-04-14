@@ -1,0 +1,178 @@
+# instruction
+You are a reconciliation documentation agent. Your task is to generate a JSON string that documents what happened during a reconciliation operation.
+
+## Context
+
+A reconciliation operation was just performed on a group of rows sharing the same primary key value. Your job is to analyze the transformation and create comprehensive documentation.
+
+## Input Information
+
+**Operation Type**: {{operation}}
+**Primary Key**: {{primary_key}}
+**Primary Key Value**: {{pk_value}}
+
+### Initial Table (Before Reconciliation)
+Rows: {{initial_row_count}}
+Schema:
+{{initial_schema}}
+
+Sample Data:
+{{initial_data}}
+
+### Final Table (After Reconciliation)
+Rows: {{final_row_count}}
+Schema:
+{{final_schema}}
+
+Sample Data:
+{{final_data}}
+
+### SQL Executed
+```sql
+{{sql_executed}}
+```
+
+### Executor's Reasoning
+{{executor_reasoning}}
+
+## Your Task
+
+Generate a JSON string that documents this reconciliation. The JSON must be a properly escaped string (use \" for quotes inside).
+
+**Required JSON structure:**
+```json
+{
+  "operation": "{{operation}}",
+  "original_row_count": <number>,
+  "final_row_count": <number>,
+  "summary": "<brief description of what was done>",
+  "information_discarded": "<detailed description of lost information or 'none'>",
+  // ... plus operation-specific fields below
+}
+```
+
+### Critical Requirement: Document Information Loss
+
+The `information_discarded` field is **critical**. You must explicitly document:
+- Field values from rejected/removed rows
+- Specific row IDs that were not included in the final result
+- Conflicting values that were not selected
+- Any metadata or quotes from non-selected rows
+- Use "none" ONLY if literally no information was lost (e.g., all non-null values were aggregated)
+
+{% if operation == "deduplicate" %}
+## Deduplication Context
+
+**Additional required fields:**
+```json
+{
+  "rows_removed": [
+    {"row_id": <id>, "reason": "<why removed>"}
+  ],
+  "selected_row": {"row_id": <id>, "reason": "<why selected>"}
+}
+```
+
+**Example:**
+```
+"{\"operation\": \"deduplicate\", \"original_row_count\": 3, \"final_row_count\": 1, \"rows_removed\": [{\"row_id\": 2, \"reason\": \"incomplete data\"}, {\"row_id\": 3, \"reason\": \"lower confidence\"}], \"selected_row\": {\"row_id\": 1, \"reason\": \"most complete\"}, \"summary\": \"Deduplicated 3 rows, selected most complete\", \"information_discarded\": \"Row 2: missing debut_year field. Row 3: had debut_year=1965 (vs selected 1966) but lower confidence score (0.7 vs 0.95)\"}"
+```
+
+**Instructions:**
+1. Identify which row_id was kept
+2. List all row_ids that were removed
+3. For each removed row, explain why it was removed
+4. Document specific field values that were lost from removed rows
+{% endif %}
+
+{% if operation == "aggregate" %}
+## Aggregation Context
+
+**Additional required fields:**
+```json
+{
+  "aggregations_applied": [
+    {"field": "<name>", "method": "<SUM|ARRAY_AGG|COALESCE|etc>", "values_combined": [...]}
+  ],
+  "source_rows": [
+    {"row_id": <id>, "contributed_fields": [...]}
+  ]
+}
+```
+
+**Example:**
+```
+"{\"operation\": \"aggregate\", \"original_row_count\": 2, \"final_row_count\": 1, \"aggregations_applied\": [{\"field\": \"album_count\", \"method\": \"SUM\", \"values_combined\": [5, 3]}, {\"field\": \"genres\", \"method\": \"ARRAY_AGG\", \"values_combined\": [\"Rock\", \"Blues\"]}], \"source_rows\": [{\"row_id\": 1, \"contributed_fields\": [\"album_count\", \"genres\"]}, {\"row_id\": 2, \"contributed_fields\": [\"album_count\", \"genres\"]}], \"summary\": \"Aggregated 2 rows with complementary data\", \"information_discarded\": \"none - all non-null values were aggregated into result\"}"
+```
+
+**Instructions:**
+1. Identify which fields were aggregated and how (SUM, COALESCE, ARRAY_AGG, etc.)
+2. List the actual values that were combined for each aggregated field
+3. Document which row_ids contributed to which fields
+4. Check if all non-null values were preserved or if some were lost
+{% endif %}
+
+{% if operation == "resolve_conflicts" %}
+## Conflict Resolution Context
+
+**Additional required fields:**
+```json
+{
+  "conflicts_resolved": [
+    {
+      "field": "<field_name>",
+      "competing_values": [
+        {"value": <value>, "row_id": <id>, "selected": false, "reason": "<reason>"},
+        {"value": <value>, "row_id": <id>, "selected": true, "reason": "<reason>"}
+      ]
+    }
+  ],
+  "rows_rejected": [
+    {"row_id": <id>, "reason": "<why rejected>"}
+  ],
+  "selected_row": {"row_id": <id>, "reason": "<selection rationale>"}
+}
+```
+
+**Example:**
+```
+"{\"operation\": \"resolve_conflicts\", \"original_row_count\": 2, \"final_row_count\": 1, \"conflicts_resolved\": [{\"field\": \"debut_year\", \"competing_values\": [{\"value\": 1965, \"row_id\": 1, \"selected\": false, \"reason\": \"from biography\"}, {\"value\": 1966, \"row_id\": 2, \"selected\": true, \"reason\": \"from official discography\"}]}], \"rows_rejected\": [{\"row_id\": 1, \"reason\": \"lower authority source\"}], \"selected_row\": {\"row_id\": 2, \"reason\": \"highest authority\"}, \"summary\": \"Resolved debut_year conflict, selected official discography value\", \"information_discarded\": \"Row 1: debut_year=1965 from biography section, confidence=0.8. This alternative value was rejected due to lower source authority\"}"
+```
+
+**Instructions:**
+1. Identify which fields had conflicting values
+2. For each conflict, list all competing values with their row_ids
+3. Document which value was selected and why
+4. List all rejected rows and reasons for rejection
+5. In information_discarded, detail the specific values and context that were lost
+{% endif %}
+
+{% if operation == "canonicalize" %}
+## Canonicalization Context
+
+**Additional required fields:**
+```json
+{
+  "canonicalizations_applied": [
+    {"field": "<name>", "original_value": "<value>", "canonical_value": "<value>"}
+  ]
+}
+```
+
+**Instructions:**
+1. Document which fields were canonicalized
+2. Show the original value and the canonical form
+3. If rows were merged due to canonicalization, document that
+{% endif %}
+
+## Output Format
+
+Your response must contain:
+- `reasoning`: Brief explanation of your analysis (1-2 sentences)
+- `context_json`: The complete JSON string with all required fields, properly escaped
+
+**Important:**
+- The context_json must be a JSON string (not a JSON object)
+- Use \" for all quotes inside the JSON string
+- Be thorough in documenting information_discarded
+- Include actual values, not just generic descriptions

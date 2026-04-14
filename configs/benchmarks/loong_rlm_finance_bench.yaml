@@ -1,0 +1,21 @@
+experiment: finance_bench
+system: rlm
+system_config:
+  models:
+    main:
+      model: gpt-5
+    sub:
+      model: gpt-5-mini
+  max_iterations: 30
+experiment_config:
+  benchmark_path: /path/to/datasets/financebench/financebench_open_source.jsonl
+  gpt_results_path: /path/to/datasets/financebench/gpt-4_oracle_reverse.jsonl
+  files_dir: /path/to/datasets/financebench/markdown/
+  soft_evaluator_model: gpt-4.1
+  hard_evaluator_model: gpt-4.1
+  num_questions: null
+  random_state: 42
+  document_config:
+    chunk_size: 16000
+    overlap_size: 0
+output_file: finance_bench_rlm_27jan.json
