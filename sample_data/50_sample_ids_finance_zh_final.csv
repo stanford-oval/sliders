@@ -1,0 +1,86 @@
+# Loong Finance Domain Balanced 50-Sample Subset (zh only) (excluding 30 IDs)
+# Generated: 2026-01-27
+# Available Finance Dataset Size: 390 questions (after exclusions)
+# Random State: 42
+#
+# BALANCING CRITERIA:
+# ===================
+# 1. level (difficulty): 1, 2, 3, 4 - proportionally distributed
+# 2. length (document size): short, medium, long - tertile split
+#
+# DISTRIBUTION STATISTICS:
+# ========================
+# level:
+#   Level 1: 9 samples (18.0%)
+#   Level 2: 15 samples (30.0%)
+#   Level 3: 20 samples (40.0%)
+#   Level 4: 6 samples (12.0%)
+#
+# length bins:
+#   Short (<78k chars): 16 samples (32.0%)
+#   Medium (78k-130k chars): 18 samples (36.0%)
+#   Long (>130k chars): 16 samples (32.0%)
+#
+# LENGTH STATISTICS:
+#   Min: 20,975
+#   Max: 242,691
+#   Mean: 105,247
+#   Median: 107,705
+#
+# LANGUAGE DISTRIBUTION:
+#   English (en): 0 samples (0.0%)
+#   Chinese (zh): 50 samples (100.0%)
+#
+# ID FORMAT: UUID string
+#
+id
+360f0e5c-416e-4c4a-afa3-e10518b3b3a2
+cae27e9d-deba-4ae8-b55b-430c0eb50e52
+0523b4e1-a368-4a23-857e-1fdb2f566444
+747f5c6d-add3-4d47-b383-f98671743f78
+7f81435c-b7d9-4610-a797-9f94932b358e
+9f416db5-2766-4ce0-ae5f-cf54b50df416
+94281743-7e98-4786-a466-82205e170839
+6c4cab6e-e220-40c3-8e8b-fb649cee0e8b
+231d0127-15d7-4425-bfaa-6a2659ed9f23
+aa78da15-1854-4667-9e29-e01347e7cee3
+e0007015-e0b3-4a25-a3c2-38715f07f430
+836626b6-2fdb-4591-8bc8-90be5da23fd7
+198f9f86-ce3b-4b20-9495-051394400da1
+3e0ed776-9822-4a8a-9c19-051ab8300413
+e34df903-e992-4a1c-908e-1b79fbfc9a51
+e83edd85-2e17-4b22-9f89-909c6a1811a0
+cbd31589-9532-4b79-a9e9-790a832e1a3a
+1441c822-56ca-4e5d-a138-d74864fcfbf9
+dc466ed9-e56f-47b5-b011-15836308a965
+1d88d2b5-b9bf-49bb-80fc-b9e384aa8b10
+0f992dd5-5c3d-4bec-997b-fdf7a6696d7f
+5bd2b85f-f380-46e8-9832-c4211e1a6c04
+3ea9864e-1b26-4726-9fc3-b38ae570442c
+589ac24d-3755-4e9d-acf3-31fa3d45e230
+de6cdade-8399-4878-9867-d46d6f5ccdcd
+79159f9f-97e9-4250-8ca3-0df95478c3f2
+9b9202d5-06d9-4692-9fc5-05eb2660f94f
+ec62feb9-5817-4ca7-a0a7-fd25b6977b8d
+dfa7bce1-33b5-4121-b7f4-efd0fbb07ca2
+89e5aec8-f61b-458d-89a3-d00d08cb775f
+1937ef3a-c8ec-42d5-a91c-6952c4676a21
+2c534637-035b-49f0-b2c5-7984db256ddf
+30540dcc-bae5-49f3-8986-95e0b981e8e6
+882e85d8-bc46-4ac8-9d26-2b6e80ca8153
+bec203d9-7506-42fb-945a-0956b7ca521f
+e8fd487d-1981-447c-b927-8ca7ba71486b
+9c659026-aa57-45b4-bff7-ee73ada3268c
+1b8667b8-e6a3-475d-aaa4-02102804ce4d
+9cecf073-04e2-43b3-8174-6eeac8126146
+34487085-a4dd-4b9f-a8a0-890865a0c446
+aa62cc72-10cb-41d5-8a27-5b8b5e642a06
+fa2887f1-7b3f-4899-bdf6-6c8740950af2
+9c98b550-383e-460e-b694-974fba81dc6b
+8582c4cc-4d10-4126-aa69-a5fae868ecd5
+6cd1f216-8ef9-486f-8755-08531eb907dc
+c9495554-23fd-4667-a519-7e9139b5d17c
+424d60a8-5b9d-475c-bf84-0778fe71950c
+78054239-28d8-416c-ad49-c9470f3298dc
+631705a6-816c-4f2c-a9b1-bbc844515212
+73a7aa5e-0f2a-477f-ac7d-66898ca44427

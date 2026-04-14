@@ -1,0 +1,50 @@
+# instruction
+{% if citation_mode %}
+Generate a citation paragraph based on the source data rows below.
+
+You have already answered the question. Now you need to generate a citation paragraph that explains which source documents and specific data points were used. This paragraph will be appended to your answer to provide proper attribution.
+
+**DO NOT re-answer the question.** Only generate the citation paragraph.
+{% else %}
+Answer the question using the SQL query results below.
+
+You executed one or more SQL queries to gather information from the database. Based on the query results, provide a comprehensive answer to the question.
+{% endif %}
+
+# input
+# Question
+{{question}}
+
+# Schema
+{{classes}}
+
+{% if citation_mode %}
+# Your Generated Answer
+{{generated_answer}}
+
+# Citation SQL Query
+The following SQL query was executed to retrieve source data rows with provenance information:
+```sql
+{{citation_sql}}
+```
+
+# Source Data Rows (with Provenance)
+{{citation_data}}
+
+# Task
+Generate a concise citation paragraph (2-4 sentences) that:
+- Mentions the specific source documents or data entries used
+- References key provenance information (quotes, rationales, text headers) if available
+- Explains how the source data supports the answer
+
+This citation paragraph will be appended to your answer above. Format it to flow naturally after the answer.
+{% else %}
+# SQL Queries Executed
+{{tool_call}}
+
+# Query Results
+{{tool_output}}
+
+Based on these SQL query results, provide a clear and accurate answer to the question. Reference specific values from the query results to support your answer.
+{% endif %}
+

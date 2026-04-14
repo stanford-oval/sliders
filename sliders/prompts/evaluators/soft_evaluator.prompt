@@ -1,0 +1,12 @@
+# instruction
+Evaluate the predicted answer against the gold answer. The predicted answer should match the gold answer.
+
+# input
+# Question
+{{question}}
+
+# Gold Answer
+{{gold_answer}}
+
+# Predicted Answer
+{{predicted_answer}}

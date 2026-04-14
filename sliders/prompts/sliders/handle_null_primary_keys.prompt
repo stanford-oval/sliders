@@ -1,0 +1,389 @@
+# instruction
+You are handling NULL values in primary key columns for a table that has been automatically extracted from documents.
+
+Your role is to analyze rows with NULL primary key values and decide how to handle them by filling, extracting, discarding, or assigning placeholders.
+
+## Pipeline Context
+
+**Preprocessing completed**:
+1. ✅ **Primary Key Selected**: A semantic primary key has been identified
+2. ✅ **Primary Key Fields Canonicalized**: Primary key values have been standardized
+3. ➡️ **NULL Primary Key Handling** (YOU ARE HERE): Handle rows with NULL values in primary key columns
+
+**This is Phase 2.5** - inserted between PK Canonicalization and Per-PK Group Reconciliation.
+
+After you handle NULLs, the reconciliation phase will consolidate rows with the same primary key.
+
+## Your Task
+
+{% if mode == "document_level" %}
+You are processing a specific document's rows with NULL values in primary key columns.
+
+**Primary Key for this table**: {{primary_key}}
+
+**Document you're handling**: {{partition_value}}
+
+You are seeing:
+- **null_rows** table: {{null_rows_count}} row(s) from this document with ANY NULL in primary key columns
+- **context_rows** table: {{context_rows_count}} row(s) from the SAME document with ALL PK columns filled
+
+{% else %}
+You are processing a specific subset of rows that share a **NULL pattern** in the primary key.
+
+**Primary Key for this table**: {{primary_key}}
+
+**NULL pattern you're handling**:
+- NULL columns: {{null_cols}}
+- Non-NULL columns: {{non_null_cols}}
+
+**Your partition value**: {{partition_value}}
+
+You are seeing:
+- **null_rows** table: {{null_rows_count}} row(s) with the NULL pattern
+- **context_rows** table: {{context_rows_count}} row(s) with same non-NULL PK values but ALL PK columns filled
+{% endif %}
+
+## Two Tables Available
+
+You have access to two separate tables in your SQL context:
+
+### 1. `null_rows` - Rows to Process
+{% if mode == "document_level" %}
+These are the rows you need to handle. They have NULLs in one or more primary key columns.
+{% else %}
+These are the rows you need to handle. They have NULLs in {{null_cols}}.
+{% endif %}
+
+### 2. `context_rows` - Reference/Context
+{% if mode == "document_level" %}
+Rows from the same document where ALL primary keys are non-NULL.
+{% else %}
+Rows where {{non_null_cols}} = {{partition_value}} AND all primary keys are non-NULL.
+{% endif %}
+
+Use these to see what PK values exist for this partition. Context rows pass through unchanged; your SQL only processes `null_rows`.
+
+## Decision Options
+
+For each row in `null_rows`, you must decide one of three actions:
+
+### 1. Discard
+**When**: Row contains no useful information
+- All non-PK columns are NULL or empty
+- Failed extraction with no recoverable data
+- Example: a row with only metadata fields populated but no actual content
+- Be conservative: Even if one of the column like a rationale column has some meaningful information, then do not discard
+
+**Implementation**: Exclude the row from your SQL result (don't SELECT it)
+
+### 2. Fill from Context
+**When**: Row refers to the same entity as a context row
+- Non-NULL columns and their metadata match between null_rows and context_rows
+- Document provenance matches (same document_name, text_header, page_number)
+- Populated fields indicate same entity (e.g., matching dates, descriptions, locations)
+- If all context rows share the same PK value for the NULL column, use that value
+
+**Implementation**: Use CASE to copy PK values from matching context row, or use a subquery if all context rows have the same PK value
+
+### 3. Fill Placeholder
+**When**: Row is meaningful but PK values cannot be determined
+- Row has useful non-PK data worth preserving
+- No clear match with context rows
+
+**Implementation**: Use CASE to assign placeholder: "{{placeholder_text}}"
+
+## Progressive Analysis Strategy
+
+Follow these steps:
+
+**Step 1: Inspect null_rows**
+Check what non-PK columns have data. Are these rows meaningful or mostly empty?
+
+```sql
+SELECT * FROM null_rows LIMIT 10;
+
+SELECT 
+  COUNT(*) as total_rows,
+  COUNT(some_non_pk_col) as non_null_data_col1,
+  COUNT(another_col) as non_null_data_col2
+FROM null_rows;
+```
+
+**Step 2: Inspect context_rows**
+See what PK value combinations exist for potential matching.
+
+```sql
+SELECT * FROM context_rows LIMIT 10;
+
+{% if mode == "document_level" %}
+-- Count distinct values for each PK column
+{% for col in primary_key %}
+SELECT {{col}}, COUNT(*) as cnt
+FROM context_rows
+GROUP BY {{col}};
+{% endfor %}
+{% else %}
+-- Count distinct values for the NULL column
+SELECT {{null_cols[0]}}, COUNT(*) as cnt
+FROM context_rows
+GROUP BY {{null_cols[0]}};
+{% endif %}
+```
+
+**Step 3: Determine match strategy**
+How should null_rows map to context_rows?
+
+```sql
+-- Compare populated fields
+SELECT 
+  n.row_id,
+  {% if mode == "document_level" %}
+  -- Compare all PK columns from context
+  {% for col in primary_key %}c.{{col}} as context_{{col}}, {% endfor %}
+  {% else %}
+  {% for col in null_cols %}c.{{col}} as context_{{col}}, {% endfor %}
+  {% endif %}
+  -- Add any comparison logic for populated columns
+  n.some_field = c.some_field as fields_match
+FROM null_rows n
+CROSS JOIN context_rows c;
+```
+
+**Step 4: Generate processing SQL**
+Generate processing SQL based on your analysis.
+
+## Input
+
+Table name: {{table_name}}
+
+Partition value you're processing: {{partition_value}}
+
+## Schema
+{{schema}}
+
+## Table Statistics
+
+**null_rows statistics:**
+{{null_rows_stats}}
+
+**context_rows statistics:**
+{{context_rows_stats}}
+
+## Your Inspection History
+{{inspection_history}}
+
+## Status
+
+{% if must_process_now %}
+⚠️ WARNING: No more inspections allowed. You MUST process now (action: "process").
+{% else %}
+**Inspection Budget**: You can inspect {{inspections_remaining}} more time(s), or choose to process now.
+{% endif %}
+
+# Task
+
+{% if verification_mode %}
+Your processing SQL has been executed. Verify that the SQL correctly transformed initial_table → final_table as intended by your reasoning.
+
+**Phase**: Verification
+
+Partition value you were processing: {{partition_value}}
+
+## Initial Table Schema (before your SQL)
+{{initial_schema}}
+
+## Final Table Schema (after your SQL)
+{{final_schema}}
+
+### Your Generated SQL
+```sql
+{{generated_sql}}
+```
+
+### Your Reasoning When Generating
+{{generation_reasoning}}
+
+### Available Tables for Inspection
+Two tables are registered in DuckDB:
+- **`initial_table`**: {{initial_row_count}} rows BEFORE your SQL was applied
+- **`final_table`**: {{final_row_count}} rows AFTER your SQL was applied
+
+**IMPORTANT**: You do NOT have the actual table contents yet. You must inspect both tables using SQL to verify the transformation was executed correctly.
+
+### Your Verification Inspection History
+{{verification_inspection_history}}
+
+**VERIFICATION SCOPE:**
+You are checking if your SQL performed the transformation correctly. Focus on: Did the SQL execute the logic described in your reasoning?
+
+**COMMON FAILURE MODES:**
+When verification fails, it's usually NOT random - it's a SQL logic error:
+- **JOIN conditions too strict**: Matching on document_name/text_header/page_number may fail if rows are from different pages
+- **Subquery returns NULL**: If context_rows is empty or doesn't match the expected pattern
+- **COALESCE with NULL source**: If the JOIN finds no match, COALESCE just gets NULL from both sides
+
+**VERIFICATION WORKFLOW:**
+
+1. **Inspect to verify the transformation**:
+   - action: "inspect"
+   - sql: Compare initial_table and final_table (e.g., SELECT * from both, or use UNION ALL)
+   - reasoning: What you're checking (row count, NULL fills, column values)
+
+2. **If transformation failed, diagnose the SQL issue**:
+   - action: "inspect"
+   - sql: Test why your SQL didn't work (e.g., check if JOINs match any rows, if subqueries return values)
+   - reasoning: "Testing if JOIN matched rows: SELECT COUNT(*) FROM null_rows n LEFT JOIN context_rows c ON ..."
+   - Use your inspection budget to experiment with different SQL patterns
+
+3. **After diagnosing, decide:**
+
+   **Option A: Approve** - The SQL worked correctly
+   - action: "approve"
+   - reasoning: Confirm initial_table → final_table matches your intended transformation
+
+   **Option B: Regenerate** - The SQL failed, provide DIFFERENT SQL
+   - action: "regenerate"  
+   - sql: NEW SQL using a different pattern/approach (not the same SQL again!)
+   - reasoning: Explain what was wrong with original SQL and how the new approach fixes it
+   
+   **Common fixes:**
+   - Remove strict JOIN conditions: `ON n.artist_name = c.artist_name` (partition key only)
+   - Use simple subquery: `COALESCE(col, (SELECT col FROM context_rows LIMIT 1))`
+   - Check context_rows count first: If only 1 row, LIMIT 1 subquery is safe
+
+**Remaining Inspections**: {{remaining_inspections}}
+
+**Critical Rules:**
+- If transformation failed, your original SQL had a logic error
+- Use inspections to test and diagnose the SQL problem
+- Regenerated SQL must use a DIFFERENT approach than the original
+- Don't regenerate identical SQL - that will fail again!
+- Regenerated SQL is auto-accepted (no second verification)
+
+{% else %}
+Decide: should you inspect more, or are you ready to process the NULL rows?
+
+**If you need more information**, output:
+- action: "inspect"
+- sql: Your inspection SQL query (SELECT on null_rows and/or context_rows)
+- reasoning: Why you need this inspection
+
+**Example inspections:**
+```sql
+-- View all NULL rows with their populated columns
+SELECT * FROM null_rows;
+
+-- Check metadata fields for matching evidence
+SELECT row_id, document_name, text_header, page_number FROM null_rows;
+SELECT row_id, document_name, text_header, page_number FROM context_rows;
+
+-- Compare populated non-PK columns side by side
+SELECT 'null' as source, * FROM null_rows
+UNION ALL
+SELECT 'context' as source, * FROM context_rows;
+
+-- Check for document/header matches
+SELECT 
+  n.row_id as null_row_id,
+  {% for col in null_cols %}c.{{col}} as context_{{col}}, {% endfor %}
+  n.document_name = c.document_name as same_doc,
+  n.text_header = c.text_header as same_header
+FROM null_rows n
+CROSS JOIN context_rows c;
+```
+
+**If you're ready to process**, output:
+- action: "process"
+- sql: Your processing SQL that returns processed rows from null_rows
+- reasoning: Explain your decision for each NULL row
+
+**Processing SQL Requirements:**
+- SELECT from `null_rows` table as your base
+- Fill NULL PK columns using CASE statements or COALESCE
+- Reference `context_rows` via subqueries or LEFT JOIN
+- Return all rows you want to keep; omit rows you want to discard
+- Preserve all original columns in the output
+
+**Processing SQL Patterns:**
+
+{% if mode == "document_level" %}
+```sql
+-- Pattern A: Uniform fill from context
+SELECT
+  row_id,
+  {% for col in primary_key %}
+  COALESCE({{col}}, (SELECT {{col}} FROM context_rows LIMIT 1)) AS {{col}},
+  {% endfor %}
+  other_columns...
+FROM null_rows;
+
+-- Pattern B: Row-specific logic
+SELECT
+  row_id,
+  {% for col in primary_key %}
+  CASE
+    WHEN row_id IN (ids_to_fill_from_context) THEN (SELECT {{col}} FROM context_rows LIMIT 1)
+    WHEN row_id IN (ids_to_fill_placeholder) THEN '{{placeholder_text}}'
+    ELSE {{col}}
+  END AS {{col}},
+  {% endfor %}
+  other_columns...
+FROM null_rows
+WHERE row_id NOT IN (discarded_ids);
+
+-- Pattern C: Join-based matching
+SELECT
+  n.row_id,
+  {% for col in primary_key %}
+  COALESCE(n.{{col}}, c.{{col}}) AS {{col}},
+  {% endfor %}
+  n.other_columns...
+FROM null_rows n
+LEFT JOIN context_rows c ON <join_condition>;
+```
+{% else %}
+```sql
+-- Pattern A: Uniform fill from context
+SELECT
+  row_id,
+  {% for col in null_cols %}
+  COALESCE({{col}}, (SELECT {{col}} FROM context_rows LIMIT 1)) AS {{col}},
+  {% endfor %}
+  {% for col in non_null_cols %}{{col}}, {% endfor %}
+  other_columns...
+FROM null_rows;
+
+-- Pattern B: Row-specific logic
+SELECT
+  row_id,
+  {% for col in null_cols %}
+  CASE
+    WHEN row_id IN (ids_to_fill_from_context) THEN (SELECT {{col}} FROM context_rows LIMIT 1)
+    WHEN row_id IN (ids_to_fill_placeholder) THEN '{{placeholder_text}}'
+    ELSE {{col}}
+  END AS {{col}},
+  {% endfor %}
+  {% for col in non_null_cols %}{{col}}, {% endfor %}
+  other_columns...
+FROM null_rows
+WHERE row_id NOT IN (discarded_ids);
+
+-- Pattern C: Join-based matching
+SELECT
+  n.row_id,
+  {% for col in null_cols %}
+  COALESCE(n.{{col}}, c.{{col}}) AS {{col}},
+  {% endfor %}
+  {% for col in non_null_cols %}n.{{col}}, {% endfor %}
+  n.other_columns...
+FROM null_rows n
+LEFT JOIN context_rows c ON <join_condition>;
+```
+{% endif %}
+
+**Requirements:**
+- Base query on `null_rows` table
+- Use COALESCE or CASE to fill NULL PK columns
+- Return rows to keep; omit rows to discard
+- Include all original columns
+{% endif %}

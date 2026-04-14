@@ -1,0 +1,62 @@
+# Loong Legal Domain Balanced 30-Sample Subset
+# Generated: 2024-12-04
+# Total Legal Dataset Size: 500 questions
+# Random State: 42
+#
+# BALANCING CRITERIA:
+# ===================
+# 1. level (difficulty): 1, 2, 3, 4 - proportionally distributed
+# 2. length (document size): short, medium, long - tertile split
+#
+# DISTRIBUTION STATISTICS:
+# ========================
+# level:
+#   Level 1: 6 samples (20.0%)
+#   Level 2: 6 samples (20.0%)
+#   Level 3: 7 samples (23.3%)
+#   Level 4: 11 samples (36.7%)
+#
+# length bins:
+#   Short (<55k chars): 10 samples (33.3%)
+#   Medium (55k-124k chars): 10 samples (33.3%)
+#   Long (>124k chars): 10 samples (33.3%)
+#
+# LENGTH STATISTICS:
+#   Min: 20,659
+#   Max: 244,249
+#   Mean: 107,406
+#   Median: 83,010
+#
+# ID FORMAT: UUID string
+#
+id
+e7156b61-16b6-41c3-bc7e-88f6806a70a1
+b17ffbad-8216-49ca-bef2-f39f57d1e66f
+df574e9c-8ce9-4fe0-a318-7ea253648f7a
+71458a2f-cc08-4780-8bc5-faefa94a85b5
+5632a2e0-98fa-4dd6-a3bc-a76577edb626
+7b4b00b6-def5-47c5-8092-58c422b52696
+5faf2e81-bc62-4a0e-b63c-0f2346647d96
+b5fa94f2-53b9-4ad7-bd13-e41a58609d99
+8dba47f7-8bf0-4a14-88b0-35cd0c779fd6
+7d917831-4c5a-4366-ac6e-1a2e4188462a
+6632c2f6-1f48-4b68-ba38-3d92891c6d36
+f3300ab8-0a24-48c0-bb26-601394b984e8
+9c854c96-14e3-43c0-b0cd-806edd7252ec
+13c1baaf-079c-42c8-a052-b911dde114e2
+afa0f504-518a-43bb-9866-f4a548298008
+2b1eec47-bf84-445f-aa96-eec0ad3972a7
+29ab0514-682d-46d7-bd7d-9c74f6ba6ffe
+fc487c01-cf23-4061-a1d2-ebaf2da20353
+30b95e7d-ecdc-4e76-9567-f318e7e20ed3
+10493244-9d34-456c-a60c-cc9cd66b382a
+96772c2e-5f77-42cb-baf8-3fc6738bd923
+d07b0a9b-5214-4236-afc5-dd7118814750
+9a933a66-b506-4348-a313-1b5cb4b396cb
+4fab21cc-43b5-4913-815e-097861c43804
+a6515511-f392-4abd-928f-79326341a7f3
+24d171c4-72bb-40bc-9219-5d9e2cb9879e
+16bda8e1-990b-405f-a9b3-897b7d3ae450
+d223a14b-5d9d-41e0-90bd-ba27d5e54075
+5cf55a9a-e58c-4b04-bfd5-eb37d5144d9f
+102d1545-2161-4835-b145-c43f9df40819

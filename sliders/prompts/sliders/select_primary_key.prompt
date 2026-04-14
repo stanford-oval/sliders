@@ -1,0 +1,187 @@
+# instruction
+You are selecting **primary keys** for database tables that have been automatically extracted from documents. 
+
+## Purpose
+Your selected primary key will be used for **downstream data consolidation**:
+1. **Deduplication**: Rows with the same primary key will be identified as duplicates
+2. **Conflict Resolution**: When duplicates exist, we'll merge them by selecting the best value for each field
+3. **Table Consolidation**: The final cleaned table will have one row per unique primary key
+
+## Context
+- The data was automatically extracted from unstructured documents (PDFs, text, etc.)
+- Extraction errors create duplicate rows for the same real-world observation
+- Multiple extractions of the same data point may have conflicting values
+- Your primary key defines which rows represent the "same thing" and should be merged
+
+## Your Task
+Select the **conceptual primary key** that identifies unique observations in the ideal cleaned table. When two rows have the same primary key, they should represent the same real-world observation and be consolidated into one row.
+
+## Key Principles
+
+### The Key Defines What Gets Consolidated
+Your primary key determines which rows will be merged together:
+- Rows with **identical primary key values** → consolidated into ONE row
+- Rows with **different primary key values** → kept as separate rows
+- During consolidation, we merge conflicting field values by selecting the most reliable extraction
+
+### Separate Identifiers from Values
+**Identifiers** define WHAT is being observed - these form the primary key:
+- Entity identifiers: company, user, product, document
+- Temporal identifiers: date, period, timestamp
+- Categorical identifiers: metric_type, event_type, category
+- Relationship identifiers: source_entity, target_entity
+
+**Values** are the observed data - these get consolidated during conflict resolution:
+- Measurements: amounts, counts, percentages, scores
+- Content: text, descriptions, labels, classifications
+- Attributes: status, flags, properties
+
+**Rule**: Primary keys should contain ONLY identifiers, never measured values.
+
+Examples:
+- Metrics over time: Key = entity + time_period (metric values get consolidated)
+- Events with content: Key = entity + timestamp (content fields get consolidated)
+- Entity relationships: Key = source + target (the relationship itself IS the identifier)
+
+### Field Preferences
+**STRONGLY PREFER business/domain identifier fields** as primary keys.
+
+**Use `row_id` or `document_name` as the primary key in the scenarios where other fields are allowed to have duplicates as in text that represents dataset.**
+
+## Analysis Guidelines
+
+### 1. Understand the Data Domain
+Ask yourself: What is this table measuring or recording?
+- Financial data: Observations about companies at points in time
+- Event logs: Actions by users at timestamps
+- Relationships: Connections between entities
+- Classifications: Labels applied to items
+
+### 2. Identify the Identifier Fields
+Which fields define WHAT is being measured (not the measurement itself)?
+- Entity identifiers: company_name, user_id, paper_title, product_id
+- Temporal identifiers: date, period_end, timestamp, fiscal_year
+- Categorical identifiers: metric_name, event_type, category
+- Relationship identifiers: source_entity, target_entity
+
+Exclude value fields from the key: amounts, counts, text content, computed metrics, labels
+
+### 3. Build Composite Keys
+Most tables need multiple dimensions to identify observations:
+- Financial: entity + time (+ metric_name if multiple metrics per row)
+- Events: entity + time (+ event_type if multiple events per entity-time)
+- Relationships: source + target
+- Time series: entity + time + measure_type
+
+### 4. Validate with Consolidation Logic
+Ask yourself:
+- If two rows have the same key, should they be merged into one row? If yes, good key.
+- If two rows have different values but the same key, is one a duplicate/error? If yes, good key.
+- Are you including measured values in the key? If yes, reconsider - those should be consolidated, not part of the key.
+- Does the key define the "grain" of the consolidated table? If yes, good key.
+
+### 5. Use Statistics as Supporting Evidence
+The table statistics (null counts, distinct values) can help validate your choice:
+- Key fields should have low null rates
+- Key combinations should have reasonable cardinality
+- But don't let statistics override semantic meaning
+
+### 6. Expect Duplicates - That's Why We Need the Key
+The current extracted data will have duplicates with the correct key - this is by design:
+- Multiple extractions of the same observation create duplicate rows
+- These duplicates will be consolidated using your primary key
+- Text variations (spacing, punctuation) will exist in both keys and values
+- Your job: identify the conceptual key that groups rows for consolidation, not ensure perfect uniqueness now
+
+## SQL Query Capabilities
+You have access to SQL queries to inspect the data. Use queries to:
+- Check uniqueness: `SELECT field, COUNT(*) as cnt FROM table GROUP BY field HAVING cnt > 1`
+- Check null rates: `SELECT COUNT(*) - COUNT(field) as null_count FROM table`
+- Check cardinality: `SELECT COUNT(DISTINCT field) FROM table`
+- Check composite uniqueness: `SELECT field1, field2, COUNT(*) FROM table GROUP BY field1, field2 HAVING COUNT(*) > 1`
+- Sample values: `SELECT field FROM table LIMIT 10`
+
+Focus queries on business fields first. Only query system fields if you're considering them as a fallback.
+
+## Query Budget
+You have a budget of {{max_queries}} SQL queries. Use them strategically:
+- First query: Get overview statistics for all fields
+- Subsequent queries: Drill down on promising primary key candidates
+- Final queries: Validate your proposed primary key choice
+
+## Input
+**Question:** {{question}}
+
+**Table Name:** {{table_name}}
+
+**Schema:**
+{{schema}}
+
+**Table Statistics:**
+{{table_stats}}
+
+{% if query_history %}
+**Previous Query Results:**
+{{query_history}}
+{% else %}
+**Previous Query Results:**
+No queries executed yet
+{% endif %}
+
+{% if sql_error_feedback %}
+**SQL Error Feedback:**
+{{sql_error_feedback}}
+{% endif %}
+
+## Output Format
+Based on your analysis, provide your decision:
+
+**Action**: Choose either "query" (run another SQL query to gather more information) or "finalize" (you have enough information to recommend a primary key)
+
+**Reasoning**: Explain your thinking (2-3 sentences)
+- If action is "query": Why do you need this information? What will it tell you about the consolidation key?
+- If action is "finalize": Why is this the best primary key for consolidation? Explain what defines a unique observation and what fields will be consolidated during conflict resolution.
+
+**SQL** (only if action is "query"): The SQL query to run
+
+**Primary Key** (only if action is "finalize"): List of field names that form the primary key, e.g., ["company_name", "period_end_date"] or ["citing_paper_title", "cited_paper_title"]. Use null if no semantic primary key exists.
+
+## Examples
+
+### Example 1: Single Metric Per Row
+```
+Action: finalize
+Reasoning: This table records a single metric for entities over time. The consolidation key is entity + time_period. Multiple extractions of the same entity-period will have the same key and be merged into one row. The metric_value field will be consolidated during conflict resolution (selecting the most reliable extracted value). Primary key excludes the value field, as values are what get consolidated, not what defines uniqueness.
+Primary Key: ["entity_name", "time_period"]
+```
+
+### Example 2: Evidence / Dataset Table
+```
+Action: finalize  
+Reasoning: This table represents a dataset of extracted mentions, not canonical facts. Each row is a distinct evidence instance that should be preserved even if it refers to the same underlying real-world observation. Consolidating rows would destroy provenance and reduce the dataset to one representative mention, which is not the goal.  
+Primary Key: ["row_id"]
+```
+
+
+### Example 3: Multiple Metrics Per Row
+```
+Action: finalize
+Reasoning: This table has multiple metric types per entity-period. The metric_type field IS an identifier (which measurement) that defines uniqueness along with entity and time. During consolidation, rows with the same entity-period-metric_type will be merged, with the amount field being consolidated via conflict resolution. Without metric_type in the key, we'd incorrectly merge different metrics (revenue vs. expenses) into one row.
+Primary Key: ["entity_name", "time_period", "metric_type"]
+```
+
+### Example 4: Relationship/Association Data
+```
+Action: finalize
+Reasoning: This table records relationships between entities. The consolidation key is source + target, as each unique relationship should appear once in the final table. Multiple extractions of the same relationship will be merged. Any additional fields (relationship_strength, relationship_date, etc.) are attributes of the relationship that get consolidated during conflict resolution, not part of the identifier.
+Primary Key: ["source_entity", "target_entity"]
+```
+
+### Example 5: Event/Transaction Data
+```
+Action: finalize  
+Reasoning: Events are identified by entity + timestamp. Multiple extractions of the same event will have the same key and be consolidated into one row. Fields like event_description, amount, and status are event attributes that will be resolved during conflict resolution. If truly multiple distinct events can occur at the exact same timestamp for the same entity, and there's no event_id or event_type to distinguish them, then entity + timestamp is still the semantic consolidation key.
+Primary Key: ["entity_id", "timestamp"]
+```
+
+Now, provide your decision.

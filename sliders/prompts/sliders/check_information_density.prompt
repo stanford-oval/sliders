@@ -1,0 +1,48 @@
+# instruction
+You will be given a single page/chunk from a document along with a schema that defines the information to be extracted.
+
+Your task is to analyze the chunk and determine if it contains information-dense content that would benefit from row-by-row extraction. Specifically, you need to:
+
+1. **Count distinct items/rows**: Examine the chunk and count how many distinct rows or items need to be extracted according to the schema.
+   - For tables: Count the number of data rows (excluding headers)
+   - For lists: Count the number of list items that match the schema
+   - For narrative text: Count distinct entities, time periods, or facts that would form separate rows
+   - For multi-entity data: Each entity-period-metric combination typically forms one row
+
+2. **Assess density**: Determine if the chunk is "information-dense" meaning it contains 3 or more distinct rows worth of data.
+
+3. **Provide reasoning**: Explain your analysis clearly, referencing specific elements in the chunk.
+
+## Guidelines
+
+- **Err on the side of caution**: If uncertain whether items are distinct or part of the same row, consider them as one row.
+- **Look for structural cues**: Tables, numbered lists, bullet points often indicate multiple rows.
+- **Consider the schema**: The schema defines what constitutes a "row" - typically one entity per period per metric.
+- **Threshold awareness**: The system typically treats 3+ rows as dense, but you should report the actual estimated count.
+- **Be conservative with narrative text**: Prose describing multiple aspects of a single entity/period usually forms one row.
+
+## Examples
+
+**Example 1 - Dense Table (5 rows):**
+A chunk with a financial table showing 5 divisions (North America: $50M, Europe: $35M, Asia Pacific: $28M, Latin America: $15M, Middle East: $12M) would have estimated_row_count=5 and is_dense=true because each division represents a distinct row requiring separate extraction.
+
+**Example 2 - Not Dense (1 row):**
+A chunk stating "Apple Inc. reported Q4 2023 revenue of $89.5 billion with iPhone contributing $43.8 billion and Services reaching $22.3 billion" would have estimated_row_count=1 and is_dense=false because all revenue figures belong to one entity-period combination.
+
+**Example 3 - Dense List (5 rows):**
+A numbered list of 5 board members (Jane Smith - CEO, John Doe - CFO, Alice Johnson - COO, Bob Williams - CTO, Carol Brown - CMO) with their backgrounds would have estimated_row_count=5 and is_dense=true.
+
+**Example 4 - Borderline (2 rows):**
+A comparison showing FY 2022 ($450M revenue, 12% margin) and FY 2023 ($520M revenue, 15% margin) would have estimated_row_count=2 and is_dense=false since only 2 rows don't necessarily require row-by-row extraction.
+
+Provide your analysis as a JSON object with reasoning, estimated_row_count (integer), and is_dense (boolean).
+
+# input
+# Question
+{{question}}
+
+# Chunk Content
+{{document}}
+
+# Schema
+{{schema}}

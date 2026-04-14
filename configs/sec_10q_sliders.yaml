@@ -1,0 +1,103 @@
+experiment: sec_10q
+system: sliders
+system_config:
+  generate_task_guidelines: false
+  rephrase_question:
+    enabled: true
+    prompt_file: sliders/rephrase_question_component.prompt
+    library_of_guidelines_path: sliders_taxonomy.json
+  generate_schema:
+    add_extra_information_class: false
+    add_document_text: true
+    generate_schema_type: library_based
+    library_of_guidelines_path: sliders_taxonomy.json
+  extract_schema:
+    decompose_fields: false
+    dedupe_merged_rows: false
+    num_samples_per_chunk: 1
+    is_relevant_chunk: true
+    extract_quotes: true
+    extraction_batch_size: 5
+  merge_tables:
+    merge_strategy: reconciliation
+  reconciliation:
+    canonicalization:
+      mode: "two_pass"  # Options: "two_pass" (default), "document_only", "global_only"
+      inspections_per_field: 5
+  check_if_merge_needed: true
+  force_sql: false
+  perform_merge: true
+  save_tables: true
+  save_tables_dir: /path/to/datasets/sec_10q_dec2025_jan2026/extracted_tables
+  answer_strategy: sql_inspect  # New SQL-first inspect answer strategy
+  models:
+    answer:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    answer_no_table:
+      model: gpt-4.1-mini
+      max_tokens: 8192
+      temperature: 0.0
+    answer_tool_output:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    extract_schema:
+      model: gpt-4.1-mini
+      max_tokens: 32000
+      temperature: 0.0
+    generate_schema:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    merge_tables:
+      model: gpt-4.1
+      max_tokens: 32000
+      temperature: 0.0
+    task_guidelines:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    check_objective_necessity:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    rephrase_question:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    direct_answer:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    force_answer:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    is_relevant_chunk:
+      model: gpt-4.1-mini
+      max_tokens: 8192
+      temperature: 0.0
+    check_if_merge_needed:
+      model: gpt-4.1
+      max_tokens: 8192
+      temperature: 0.0
+    select_guidelines_for_schema:
+      model: gpt-4.1-mini
+      max_tokens: 2000
+      temperature: 0.0
+experiment_config:
+  questions_path: /path/to/datasets/sec_10q_dec2025_jan2026/questions_10-q.txt
+  files_dir: /path/to/datasets/sec_10q_dec2025_jan2026/filings_txt
+  num_questions: 1
+  random_state: 42
+  docprocessing: true
+  document_config:
+    chunk_size: 16000
+    overlap_size: 0
+    title_model: gpt-4.1
+    description_model: gpt-4.1-mini
+    table_summary_model: gpt-4.1-mini
+output_file: sec_10q_sliders.json
+

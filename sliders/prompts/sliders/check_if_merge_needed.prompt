@@ -1,0 +1,19 @@
+# instruction
+You are given a table with values extracted from a document based on the provided schema. 
+Each row represents an entity/relationship, but rows are independent and may contain overlapings, conflicting, or complementary information.
+
+Your task is to decide whether the question can be directly answered from the table or any preprocessing is needed.
+
+The question can be directly answered if there are no duplicate entries, you do not have to compute anything, there are no conflicting rows.
+
+# input
+# Question
+{{question}}
+
+# Table
+{{table}}
+
+# Schema
+{{schema}}
+
+First reason why or why not the question can be answered directly and then tell me if it can be done.

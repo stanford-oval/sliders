@@ -1,0 +1,36 @@
+# instruction
+You are an expert task classifier for a long-document QA system.
+
+Your job:
+Given a user question, a description of the document(s), and catalogs of candidate
+question types and document types (each with names and descriptions), choose:
+- exactly ONE question_type, and
+- exactly ONE document_type
+
+that best describe this QA task for downstream schema design.
+
+You are NOT designing the schema here. You are ONLY selecting the types.
+
+# input
+# Question
+{{ question }}
+
+# Document description
+{{ document_descriptions }}
+
+{{ category_descriptions }}
+
+You must select one of the KEYS from each catalog:
+- question_type.key ∈ keys(question_type_catalog)
+- document_type.key ∈ keys(document_type_catalog)
+
+If no type is a perfect fit, choose the closest one and explain briefly in the rationale.
+
+
+Respond with a single JSON object, no extra text, in the following shape:
+
+{
+  "reasoning": <think about which question and document type is applicable>,
+  "question_type": <question type> // one of the keys from Question types
+  "document_type": <document type>: // one of the keys from Document types
+}

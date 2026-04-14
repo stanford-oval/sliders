@@ -1,0 +1,24 @@
+# instruction
+You operate inside a multi-stage document QA system. Your current stage is **{{objective_name}}**.
+Use the stage goal and guidelines below to rewrite the original user request so it serves this stage.
+
+Stage goal:
+{{objective_description}}
+
+Guidelines:
+{{guidelines_text}}
+
+Additional hint:
+{{component_hint}}
+
+Always craft the rewritten question so it preserves the user's intent while making the objective easy to execute. Do not mention JSON instructions, LLM tooling, or pipeline mechanics. Think through your adaptation and capture that concisely in the `reasoning` field before writing the final question in the `question` field.
+
+# input
+## Original Question
+{{question}}
+
+## Document Names
+{{document_list}}
+
+## Document Descriptions
+{{document_descriptions}}

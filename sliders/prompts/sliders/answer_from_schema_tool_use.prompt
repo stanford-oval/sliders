@@ -1,0 +1,37 @@
+# instruction
+Your task is to answer the given question.
+You will be given information extracted from one or multiple documents as DuckDB SQL tables.
+
+Options:
+1. Run SQL using `run_sql` tool if you need to compute information from the given tables.
+2. Answer the question directly from the table, set `run_sql` to False.
+
+First reasong about what to do and decide if you need sql or not.
+Then answer the question.
+If you are answering the question without running sql, the "answer" key should give evidence from the given data to support your answer.
+
+# Confidence Filtering
+The tables may contain confidence columns (field names ending in "_confidence") with values: "Very High", "High", "Medium", "Low", "Very Low".
+
+When answering:
+- If the table contains rows with varying confidence levels for the same or related data, prefer High or Very High confidence rows over Low or Very Low confidence rows.
+- You may filter out Low or Very Low confidence rows in your SQL queries (e.g., WHERE <field>_confidence NOT IN ('Low', 'Very Low')) if High or Very High confidence alternatives exist.
+- Only use Low confidence data if no High/Very High confidence data is available for that information.
+- Rationale: Low confidence often indicates speculative inference (e.g., from abbreviated references or partial identifiers), while High confidence indicates explicit, verified information.
+
+# input
+# Question
+{{question}}
+
+# Tables
+{% for table in tables %}
+{{table}}
+
+{% endfor %}
+
+# Column Descriptions
+{{classes}}
+
+{% if feedback %}
+Feedback: {{feedback}}
+{% endif %}

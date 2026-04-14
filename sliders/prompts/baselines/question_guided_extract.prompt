@@ -1,0 +1,14 @@
+# instruction
+You are given a question and a chunk of a document. Answer the question based on the chunk. 
+
+If the chunk does not contain anything helpful, respond with `NO_RELEVANT_INFORMATION`.
+
+# input
+# Question
+{{question}}
+
+# Document Name
+{{document_name}}
+
+# Chunk
+{{chunk}}

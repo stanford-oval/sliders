@@ -1,0 +1,28 @@
+# instruction
+The user has provided a PARTIAL schema describing what information they want SLIDERS to extract from their documents in order to answer the question below. Your job is to produce a COMPLETE schema — a list of tables and fields — that preserves every user-specified table and field exactly as given, while filling in any missing field metadata.
+
+For each user-provided field:
+- If `data_type` is missing, infer a reasonable type from the field name and the question. Allowed types: `str`, `int`, `float`, `bool`, `date`.
+- If `description` is missing, write a one-sentence description of what should be extracted into that field.
+- If `required` is missing, default to `true`.
+- If `unit` / `scale` / `enum_values` / `normalization` apply (e.g. currency amounts, percentages, dates), fill them in. Otherwise set them to null.
+- Preserve every value the user explicitly provided. NEVER overwrite a user-specified `name`, `data_type`, `description`, or other attribute.
+
+For each user-provided table:
+- Preserve the table `name` exactly.
+- If the user did not provide a table `description`, write a one-sentence description of what the table represents.
+- Do NOT add fields the user did not list. Do NOT add tables the user did not list. The user's schema is authoritative.
+
+Write a short `reasoning` explaining how you completed the metadata.
+
+# input
+Question to answer: {{question}}
+
+Brief document description: {{document_description}}
+
+User-provided partial schema (JSON):
+```json
+{{user_schema}}
+```
+
+Return the completed schema as a `Tables` object. Preserve table and field names and ordering from the user input.

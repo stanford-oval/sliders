@@ -1,0 +1,53 @@
+# FinanceBench Balanced 30-Sample Subset
+# Generated: 2024-12-04
+# Total FinanceBench Dataset Size: 150 questions
+# Random State: 42
+#
+# BALANCING CRITERIA:
+# ===================
+# 1. question_type: domain-relevant, metrics-generated, novel-generated - equally distributed
+# 2. company diversity: maximized across 32 companies
+#
+# DISTRIBUTION STATISTICS:
+# ========================
+# question_type:
+#   domain-relevant: 10 samples (33.3%)
+#   metrics-generated: 10 samples (33.3%)
+#   novel-generated: 10 samples (33.3%)
+#
+# Company diversity:
+#   Unique companies: 16 out of 32 total
+#
+# ID FORMAT: financebench_id string (e.g., financebench_id_03029)
+#
+id
+financebench_id_01226
+financebench_id_00438
+financebench_id_00540
+financebench_id_01079
+financebench_id_00995
+financebench_id_01028
+financebench_id_00070
+financebench_id_00685
+financebench_id_01091
+financebench_id_00005
+financebench_id_04672
+financebench_id_07966
+financebench_id_04735
+financebench_id_10420
+financebench_id_06655
+financebench_id_03882
+financebench_id_03069
+financebench_id_04254
+financebench_id_04417
+financebench_id_04660
+financebench_id_01858
+financebench_id_00591
+financebench_id_01936
+financebench_id_00757
+financebench_id_01981
+financebench_id_00288
+financebench_id_00464
+financebench_id_00822
+financebench_id_00651
+financebench_id_02119

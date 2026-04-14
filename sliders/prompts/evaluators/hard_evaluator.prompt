@@ -1,0 +1,18 @@
+# instruction
+Evaluate the predicted answer against the gold answer. The predicted answer should match the gold answer.
+
+Use the following criteria to evaluate the predicted answer:
+- If there are rounding errors, its incorrect.
+- If final framing doesn't match, its incorrect.
+- If the justification doesn't match, its incorrect.
+- If the only issue is gold being in decimal and the predicted answer being in fraction or percentage, its correct.
+
+# input
+# Question
+{{question}}
+
+# Gold Answer
+{{gold_answer}}
+
+# Predicted Answer
+{{predicted_answer}}

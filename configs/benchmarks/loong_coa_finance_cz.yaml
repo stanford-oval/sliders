@@ -1,0 +1,29 @@
+experiment: loong
+system: chain_of_agents
+system_config:
+  chunk_size: 16000
+  chunk_overlap: 0
+  models:
+    worker:
+      model: gpt-4.1-mini
+      max_tokens: 8192
+      temperature: 0.0
+    manager:
+      model: gpt-4.1
+      max_tokens: 2048
+      temperature: 0.0
+experiment_config:
+  benchmark_path: /path/to/datasets/loong/loong_processed.jsonl
+  gpt_results_path: None
+  files_dir: /path/to/datasets/loong/doc/
+  soft_evaluator_model: gpt-4.1
+  hard_evaluator_model: gpt-4.1
+  num_questions: null
+  random_state: 42
+  docprocesssing: false
+  specific_ids_csv: sample_data/50_sample_ids_finance_zh_final.csv
+  document_config:
+    chunk_size: 16000
+    overlap_size: 0
+  filter_by_type: "financial"
+output_file: loong_coa_finance_cz.json

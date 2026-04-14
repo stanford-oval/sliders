@@ -1,0 +1,73 @@
+{
+    "question_type": {
+        "simple": {
+            "name": "Simple",
+            "description": "These are simple question-answering questions, where based on the given document, the answer is found in the document.",
+            "guidelines": null,
+            "extraction_rephrasing_guidelines": null
+        },
+        "ordering_questions": {
+            "name": "Ordering and retrieval questions",
+            "description": "These are questions where the answer is a list of items in a specific order, or fetching a specific item from a list. For example, 'What is the first item in the list?', 'What is the 10th item in the list?', 'What is the item at index 5?', 'What is the item with the name 'John Doe'?'",
+            "guidelines": [
+                "The schema should not contain the index of the item since extraction will be done at chunk level, and won't have the global index."
+            ],
+            "extraction_rephrasing_guidelines": null
+        },
+        "multiple_choice": {
+            "name": "Multiple Choice",
+            "description": "These are multiple choice questions, where the answer is one of the given options.",
+            "guidelines": [
+                "The schema should contain reasons for and against each option.",
+                "Include fields such as 'option_label' (e.g., 'option A name', 'option B name', 'option C name'...), 'option_text', and 'support_label'.",
+                "You can use enums as a field which says: 'supported', 'not_supported', 'insufficient_evidence', 'contradicted'."
+            ],
+            "extraction_rephrasing_guidelines": null
+        }
+    },
+    "document_type": {
+        "dataset": {
+            "name": "Dataset",
+            "description": "The documents/context are datasets, where each datapoint needs to be labeled first and then answer the questions",
+            "guidelines": [
+                "You should include any given identifier so that datapoints can be aligned across pages/chunks.",
+                "Include at least one label field (e.g., 'label') plus any other attributes needed to answer or aggregate for the question."
+            ],
+            "extraction_rephrasing_guidelines": null
+        },
+        "story": {
+            "name": "Story",
+            "description": "The documents/context are stories, novels or other text that has a narrative structure.",
+            "guidelines": [
+                "Define an 'Entity' table to capture the relationship 'entity ↔ properties mentioned on this page'.",
+                "Include fields such as 'entity_name', 'entity_type', and a field summarizing important properties on this page (e.g., 'entity_information').",
+                "If the question depends on actions or plot, define an 'Event' (or similar) table representing 'event ↔ participants/time/location', with one row per event.",
+                "Use canonicalize the names across chunks when possible so that information about the same entity/event can be merged across chunks."
+                
+            ],
+            "extraction_rephrasing_guidelines": [
+                "For relationship extraction: when the question asks about relationships involving a set of entities, make it clear that when processing ANY document (regardless of which entity is the 'focus' of the original question), the extractor should check for relationships involving ALL entities in the provided list. Avoid phrases like 'for entity X, find relationships with Y, Z' as they imply X is special. Instead, phrase it as 'extract all relationships involving any of [X, Y, Z]' to make clear that any relationship between any pair is valid, regardless of which document is being processed."
+            ]
+        },
+        "policy": {
+            "name": "Policy/Whitepaper",
+            "description": "The documents/context are policies, regulations, which provide recommendations, measures, goals, etc.",
+            "guidelines": [
+                "You should have fields like stakholders, implementation steps, conditions, etc",
+                "If it talks about recommendations, then you make sure to add fields like target_area/domain, intended outcome, advantages, disadvantages, etc"
+            ],
+            "extraction_rephrasing_guidelines": [
+                "For relationship extraction: when the question asks about relationships involving a set of entities, make it clear that when processing ANY document (regardless of which entity is the 'focus' of the original question), the extractor should check for relationships involving ALL entities in the provided list. Avoid phrases like 'for entity X, find relationships with Y, Z' as they imply X is special. Instead, phrase it as 'extract all relationships involving any of [X, Y, Z]' to make clear that any relationship between any pair is valid, regardless of which document is being processed."
+            ]
+        },
+        "others":
+        {
+            "name": "Others",
+            "description": "Other types of documents that do not fit into the above categories, such as: legal documents, financial reports, etc.",
+            "guidelines": null,
+            "extraction_rephrasing_guidelines": [
+                "For relationship extraction: when the question asks about relationships involving a set of entities, make it clear that when processing ANY document (regardless of which entity is the 'focus' of the original question), the extractor should check for relationships involving ALL entities in the provided list. Avoid phrases like 'for entity X, find relationships with Y, Z' as they imply X is special. Instead, phrase it as 'extract all relationships involving any of [X, Y, Z]' to make clear that any relationship between any pair is valid, regardless of which document is being processed."
+            ]
+        }
+    }
+}

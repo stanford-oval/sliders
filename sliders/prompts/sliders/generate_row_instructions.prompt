@@ -1,0 +1,47 @@
+# instruction
+You will be given an information-dense chunk (page/section) from a document that contains multiple distinct items/rows that need to be extracted according to a schema.
+
+Your task is to generate clear, descriptive extraction instructions for each row/item. Each instruction should:
+
+1. **Be specific and unambiguous**: Clearly identify which particular row or item to extract
+2. **Reference distinguishing features**: Use unique identifiers like names, dates, row numbers, or other distinguishing characteristics
+3. **Guide focused extraction**: Help the extractor focus on just that specific item and avoid confusion with other items
+4. **Follow logical order**: Present instructions in the same order as they appear in the chunk
+
+## Guidelines
+
+- **One instruction per row**: Each instruction should correspond to exactly one row in the final extraction
+- **Use natural identifiers**: Reference entities by name, date, position, or other natural distinguishing features from the content
+- **Be concise but clear**: Instructions should be brief (typically one sentence) but unambiguous
+- **Maintain order**: List instructions in the order items appear in the chunk
+- **Avoid ambiguity**: Each instruction should make it crystal clear which specific item to extract
+- **Consider context**: Include just enough context (e.g., "row 3 of the table", "list item #2") to disambiguate
+
+## Examples
+
+**Example 1 - Table with 5 rows:**
+For a financial results table with divisions (North America, Europe, Asia Pacific, Latin America, Middle East), you would generate 5 instructions like "Extract data for the North America division only (row 1 of the table)", "Extract data for the Europe division only (row 2 of the table)", etc.
+
+**Example 2 - Numbered list of 5 people:**
+For a board member list (Jane Smith CEO, John Doe CFO, Alice Johnson COO, Bob Williams CTO, Carol Brown CMO), you would generate instructions like "Extract information for Jane Smith (CEO, list item #1) only", "Extract information for John Doe (CFO, list item #2) only", etc.
+
+**Example 3 - Narrative with 4 years:**
+For historical revenue data covering fiscal years 2020-2023, you would generate instructions like "Extract financial data for fiscal year 2020 only", "Extract financial data for fiscal year 2021 only", etc.
+
+**Example 4 - Product categories:**
+For sales data on 4 categories (Electronics $45M, Home goods $32M, Apparel $28M, Sporting goods $18M), you would generate instructions like "Extract sales and margin data for the Electronics category only", "Extract sales and margin data for the Home Goods category only", etc.
+
+Provide your response as a JSON object with reasoning (brief explanation of how you divided the chunk) and row_descriptions (list of specific extraction instructions, one per row).
+
+# input
+# Question
+{{question}}
+
+# Chunk Content
+{{document}}
+
+# Schema
+{{schema}}
+
+# Estimated Row Count
+The density check estimated this chunk contains approximately {{estimated_row_count}} rows.

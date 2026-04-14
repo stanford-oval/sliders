@@ -1,0 +1,45 @@
+# instruction
+Generate a human-readable summary of the data reconciliation statistics below.
+
+## Pipeline Context
+The system follows a multi-stage pipeline to extract and consolidate data:
+
+**Stage 1: Schema-Based Extraction**
+- Documents are chunked and processed in parallel
+- An LLM extracts structured data from each chunk independently based on a predefined schema
+- Each extraction includes the data value, rationale, and quote from the source document
+- This results in multiple rows per document, with potential duplicates and conflicts
+
+**Stage 2: Reconciliation Pipeline (what you're summarizing)**
+The reconciliation pipeline V2 processes extracted rows through three phases:
+1. **Primary Key Selection**: Identifies semantic primary key(s) to group related rows
+2. **Primary Key Canonicalization**: Standardizes primary key values for consistent grouping
+3. **Per-PK Group Reconciliation**: For each group of rows sharing a primary key:
+   - **Controller agent** inspects data and chooses an operation (deduplicate, aggregate, resolve_conflicts, canonicalize, or stop)
+   - **Executor agent** performs the chosen operation via SQL
+   - Loop continues up to 5 iterations per group
+   - Groups are processed in parallel
+
+Your task is to explain the reconciliation statistics in 2-3 sentences for transparency about this data processing.
+
+# input
+
+## Question
+{{question}}
+
+## Table Schema
+{{classes}}
+
+## Reconciliation Statistics
+```json
+{{reconciliation_stats}}
+```
+
+# Task
+Generate a concise summary (2-3 sentences) that explains:
+- The primary key used for reconciliation
+- How many unique entities were found and how many had duplicates/conflicts
+- The total row reduction achieved (e.g., "X rows reduced to Y rows")
+- Which reconciliation actions were most common (deduplicate, aggregate, resolve_conflicts)
+
+Use natural language that is understandable to non-technical users. Focus on transparency about the data processing.

@@ -1,0 +1,117 @@
+# instruction
+You are canonicalizing the field **{{field_name}}** in rows from a single document.
+
+## Context
+- **Document**: {{document_name}}
+- **All rows are from the SAME document** - variations are likely extraction artifacts, not real distinctions
+- Use OTHER COLUMNS to determine if different values refer to the same entity
+
+## Key Principle: Check All Columns for Entity Relationships
+
+**Before deciding if two values are different entities, inspect ALL columns.** Other columns may contain information that reveals two seemingly different values actually refer to the same entity. Look for any column where:
+- One value appears as an attribute of another
+- The source text (quotes) mentions both forms together
+- Context suggests equivalence
+
+**Always start by examining the full row data:**
+```sql
+SELECT * FROM {{table_name}} ORDER BY {{field_name}};
+```
+
+If you see that value A appears in another column for rows with value B (or vice versa), they likely refer to the same entity and should be canonicalized.
+
+## Workflow
+
+1. **First inspection**: Check ALL columns to find entity relationships
+2. **Look for cross-references**: Does value X appear in any column of rows where {{field_name}} = Y?
+3. **If values appear related**, canonicalize them to one form
+4. **Apply normalization** (case, punctuation, whitespace) for remaining variations
+5. **Inspect Again to verify**: Check if the table still contains rows to be canonicalized.
+5. **Stop** when no more relationships or variations exist
+
+## Skip If
+- Free-text / natural language content
+- High cardinality with unique values
+- Long verbose strings (>50 chars average)
+
+## Canonicalization SQL Format (CRITICAL)
+
+**You must REPLACE the column, not add a new one.** Do NOT use `SELECT *` for canonicalization.
+
+**CORRECT** - explicitly list columns and keep the same column name:
+```sql
+SELECT
+  row_id,
+  CASE WHEN {{field_name}} = 'ValueA' THEN 'ValueB' ELSE {{field_name}} END AS {{field_name}},
+  other_col1,
+  other_col2,
+  ...
+FROM {{table_name}}
+ORDER BY row_id;
+```
+
+**WRONG** - DO NOT do this:
+```sql
+SELECT *, CASE ... END AS {{field_name}}_canonicalized  -- WRONG: adds new column
+SELECT *, CASE ... END AS {{field_name}}  -- WRONG: duplicates column
+```
+
+Requirements:
+- List ALL columns explicitly (no `SELECT *`)
+- The CASE expression must be named exactly `{{field_name}}` (same as original)
+- End with `ORDER BY row_id`
+- DuckDB syntax (no `|>` operators)
+- Escape quotes: `''` not `\'`
+
+## Input
+
+**Table**: {{table_name}} | **Field**: {{field_name}} | **Document**: {{document_name}}
+
+**Schema:**
+{{schema}}
+
+**Table Statistics:**
+{{table_stats}}
+
+{% if inspection_history %}
+**Inspection History:**
+{{inspection_history}}
+{% endif %}
+
+**Canonicalization History:** {{canonicalization_history}}
+
+{% if canonicalization_error_feedback %}
+**Error:** {{canonicalization_error_feedback}}
+{% endif %}
+
+**Inspections remaining:** {{inspections_remaining}}
+
+**Inspection cell limit:** Each inspection result is limited to **{{max_inspection_cells}} cells** (rows × columns). If your query returns N columns, you will see at most {{max_inspection_cells}} ÷ N rows. To see more data, select fewer columns or use targeted `WHERE` clauses, then use additional inspections for the rest.
+
+## Actions
+
+**inspect**: Run SQL to check column relationships
+```
+action: "inspect"
+sql: "<SQL>"
+reasoning: "<what you're checking>"
+```
+
+**canonicalize**: Merge related values (MUST replace column, not add new one)
+```
+action: "canonicalize"
+sql: "<SELECT with explicit columns, CASE for {{field_name}}, ORDER BY row_id>"
+reasoning: "<which values are the same entity>"
+```
+
+**stop**: After canonicalizatoin has been performed and you have done inspection again: No more variations found
+```
+action: "stop"
+reasoning: "<confirm all values are now consistent>"
+```
+
+**skip**: Field is not categorical
+```
+action: "skip"
+reasoning: "<why>"
+```

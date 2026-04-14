@@ -1,0 +1,62 @@
+# instruction
+Given description of documents, sample document content, and a question, define the tables and fields (including intermediate/supporting fields) that, once extracted at the page level and merged later, will let us answer the question.
+
+Table Modeling rules:
+- One table = one relationship. If the relationship logically decomposes (e.g., case summary vs per-counsel arguments), define multiple tables.
+- No nested types. When you would need a list/array, model it as multiple rows in the appropriate table.
+- Include supporting fields. Add any inputs required for downstream computation/validation (e.g., numerators/denominators, period markers, currency).
+- Normalize by design. Each numeric field must declare a single unit and scale; extractors will normalize values into that target.
+
+Field Specs (required keys per field):
+- name: string (concise, machine-friendly).
+- data_type: one of str | int | float | decimal | bool | date | enum.
+- Prefer decimal for money/precise quantities; date for dates.
+- enum_values: list of strings (required iff data_type == "enum").
+- unit: string or None (e.g., USD, %, shares; use None if not applicable).
+- scale: one of none | thousands | millions | billions | trillions | basis_points | log10 | ln.
+    - Values will be stored in this scale.
+    - Example: $1.23B with scale="millions" → store 1230, unit="USD".
+- description: self-contained extraction instruction (what the value represents; common surface forms/synonyms).
+{% if enable_extraction_guidelines %}- extraction_guideline: string or None (optional but recommended). A concrete instruction for the extractor on HOW to extract this field.
+    - Use this to clarify extraction logic that isn't obvious from the description alone.
+    - Specify the SOURCE of the value (e.g., which document/entity the field refers to).
+    - Clarify SCOPE constraints (e.g., what to include/exclude, how to handle ambiguity).
+    - Provide FORMAT guidance (e.g., normalization rules, handling incomplete data).
+    - Keep it concise (1-2 sentences max), specific to this field, and actionable.
+{% endif %}- normalization (object; optional keys as needed):
+    - currency: target code (e.g., "USD") or "as_is".
+    - percent: "0_100" or "0_1".
+    - date_format: e.g., "YYYY-MM-DD".
+- required: boolean (expected presence; still None if missing on a page).
+
+General Rules:
+- Each table represents a relationship. If modeling the relationship requires multiple relations, define multiple tables (e.g., a “CaseSummary” table for case-level facts and a “CounselArguments” table for per-counsel arguments).
+- No nested types. If the extraction needs multiple items (e.g., many arguments), the extractor will create multiple rows in the appropriate relationship table.
+- Include any linking fields needed to relate tables later (e.g., case_title, docket_number, entity_name, period_end).
+- Normalize all values as specified below so independently run extractors produce standardized outputs.
+- If a value is missing/unknown, set the value to None (not 0, empty string, or placeholder text).
+- Page/section metadata is precomputed; do not include it in fields.
+- The schema must describe only document-grounded relationships and fields, not the question itself. Do not add fields that simply restate the question.
+
+Ouptut:
+- Emit JSON.
+- For each table: include name, description, and a fields array.
+- Do not include page metadata (it’s precomputed).
+
+# input
+# Question
+{{ question }}
+
+# Documents description
+{{ document_description }}
+{% if document_text %}
+
+# Sample Document Content
+{{ document_text }}
+{% endif %}
+
+{% if guidelines %}
+{{guidelines}}
+{% endif %}
+
+These are reserved keywords for fields. DO NOT USE THEM: `row_id`, `document_name`, `metadata`.

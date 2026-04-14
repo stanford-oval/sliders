@@ -1,0 +1,205 @@
+# instruction
+You are selecting columns for canonicalization in a reconciled database table that has been automatically extracted from documents.
+
+## Pipeline Context
+You are at the **column selection for canonicalization stage** of the data consolidation pipeline:
+1. ✅ **Extraction**: Data was automatically extracted from documents → table created
+2. ✅ **Primary Key Selection**: Semantic primary key identified for deduplication
+3. ✅ **Primary Key Canonicalization**: Primary key fields standardized
+4. ✅ **Reconciliation**: Rows deduplicated and merged using controller-executor loops
+5. ➡️ **Column Selection for Canonicalization** (YOU ARE HERE): Identify non-primary-key columns that need canonicalization
+6. ⏭️ **Non-PK Column Canonicalization**: Standardize selected columns
+
+## Your Task
+Your goal is to inspect the reconciled table and identify which **non-primary-key columns** would benefit from canonicalization. These columns will then be canonicalized iteratively to improve data quality and enable better downstream querying.
+
+## CRITICAL: What Columns to Select
+
+### Columns to INCLUDE (categorical with standardization potential):
+- **Country/Location names**: Columns with values like "USA" vs "United States" vs "U.S."
+- **Date formats**: Inconsistent date representations "2024-01-15" vs "01/15/2024"
+- **Product/Entity categories**: "Electronics" vs "ELECTRONICS" vs "electronics"
+- **Status/Type values**: "Active" vs "ACTIVE" vs "active"
+- **Structured names**: "John Smith" vs "Smith, John"
+- **Organization names**: "IBM Corp" vs "IBM Corporation"
+- **Enum-like values**: Finite set of standardizable values
+
+**Priority**: Focus on columns likely to be used in WHERE clauses for filtering in downstream queries.
+
+### Columns to EXCLUDE (do NOT select these):
+
+**1. Metadata Columns** (automatically excluded, but check for similar patterns):
+- `*_quote`: Contains extracted text snippets
+- `*_rationale`: Contains extraction reasoning
+- `_confidence`: Contains confidence scores
+- These are about the extraction process, not the data itself
+
+**2. System Columns** (automatically excluded):
+- `row_id`, `page_number`: Internal identifiers
+- `__reconciliation_context__`: Reconciliation metadata
+- `number_instances`: Instance counting
+
+**3. Primary Key Columns** (automatically excluded):
+- Already canonicalized in Phase 2
+- Will be shown to you but should not be selected
+
+**4. Free-Text and Natural Language**:
+- Questions, descriptions, comments, notes, messages
+- Full sentences or paragraphs
+- Narrative content
+- Any column where values read like prose rather than labels
+
+**5. Unique Identifiers**:
+- UUIDs, auto-generated IDs
+- Composite IDs with embedded metadata
+- Values with patterns like "DATE: ... || User: ..."
+
+**6. High-Cardinality Free-Form Data**:
+- Most values appear only once (high uniqueness)
+- Long strings averaging >50 characters
+- Values containing delimiters like "||", embedded metadata patterns
+- Sentence structures with question marks, multiple clauses
+
+### Detection Strategy for Non-Categorical Fields
+
+When inspecting columns, check for these red flags (SKIP if present):
+1. **High cardinality**: If distinct_values ≈ total_rows, it's likely unique/free-text
+2. **Long average length**: Values averaging >50 characters suggest free-text
+3. **Sentence structure**: Question marks, punctuation indicating full sentences
+4. **Embedded metadata**: Patterns like "DATE:", "User:", "Instance:", "||" separators
+5. **Natural language**: Values reading like questions or descriptions
+
+## Inspection Strategy
+
+You have {{max_inspections}} inspections to analyze the table and identify candidate columns.
+
+### Recommended Approach:
+
+**Step 1: Get Column Overview**
+Inspect column names, types, and basic statistics:
+```sql
+SELECT 
+  column_name,
+  data_type,
+  COUNT(*) as total_rows,
+  COUNT(DISTINCT column_name) as distinct_values,
+  COUNT(DISTINCT column_name) * 100.0 / COUNT(*) as distinctness_pct,
+  AVG(LENGTH(CAST(column_name AS VARCHAR))) as avg_length,
+  MIN(LENGTH(CAST(column_name AS VARCHAR))) as min_length,
+  MAX(LENGTH(CAST(column_name AS VARCHAR))) as max_length
+FROM {{table_name}}
+WHERE column_name IS NOT NULL
+GROUP BY column_name, data_type;
+```
+
+
+**Step 2: Examine Value Distributions for Candidates**
+For columns that look categorical (low-moderate cardinality, shorter lengths):
+```sql
+SELECT column_name, COUNT(*) as cnt
+FROM {{table_name}}
+WHERE column_name IS NOT NULL
+GROUP BY column_name
+ORDER BY cnt DESC
+LIMIT 50;
+```
+
+Look for:
+- Multiple variations of the same value (case, punctuation, whitespace)
+- Abbreviations vs full forms
+- Date format inconsistencies
+- Common categorical patterns
+
+**Step 3: Check Sample Values for Red Flags**
+For uncertain columns, sample actual values:
+```sql
+SELECT column_name
+FROM {{table_name}}
+WHERE column_name IS NOT NULL
+LIMIT 20;
+```
+
+Check if values look like:
+- Categorical labels → INCLUDE
+- Full sentences/questions → EXCLUDE
+- Unique identifiers → EXCLUDE
+- Natural language text → EXCLUDE
+
+**Step 4: Prioritize Based on Query Utility**
+Among remaining candidates, prioritize columns that:
+- Have moderate cardinality (good for filtering)
+- Represent entities, categories, statuses, or classifications
+- Are likely to appear in WHERE clauses for downstream analysis
+
+## Automatic Exclusions
+
+The following columns are automatically excluded from consideration (you don't need to mention them):
+- Primary key columns: {{primary_key}}
+- Metadata columns: `*_quote`, `*_rationale`, `_confidence`
+- System columns: `row_id`, `page_number`, `__reconciliation_context__`, `number_instances`
+
+## Input
+
+**Table Name:** {{table_name}}
+
+**Primary Key (already canonicalized):** {{primary_key}}
+
+**Schema:**
+{{schema}}
+
+**Table Statistics:**
+{{table_stats}}
+
+**Inspection History:**
+{% if inspection_history %}
+{{inspection_history}}
+{% else %}
+No inspections yet
+{% endif %}
+
+**Inspections Remaining:** {{inspections_remaining}}
+
+## Output Format
+
+Choose one action:
+
+### 1. Inspect Table
+```
+action: "inspect"
+sql: "<inspection SQL query>"
+reasoning: "<what you're trying to learn from this inspection>"
+```
+
+Use this to:
+- Get column overview and statistics
+- Examine value distributions for specific columns
+- Sample values to check for free-text vs categorical
+- Investigate potential candidates
+
+### 2. Finalize Column Selection
+```
+action: "finalize"
+columns_to_canonicalize: ["column1", "column2", "column3"]
+reasoning: "<summary of why each column was selected and why others were excluded>"
+```
+
+Use this when you're ready to provide the final list.
+
+**Requirements for finalizing:**
+- You must have inspected the table to understand column characteristics
+- Your reasoning must explain:
+  - Which columns you selected and why (categorical, standardization potential, query utility)
+  - Which columns you excluded and why (free-text, metadata, high-cardinality, etc.)
+- The list can be empty if no columns need canonicalization
+- Only include non-PK, non-metadata columns that are categorical and standardizable
+
+## Important Notes
+
+- **Be selective**: Only include columns that will truly benefit from canonicalization
+- **Categorical only**: Do NOT include free-text, narrative, or natural language columns
+- **Query-focused**: Prioritize columns useful for filtering in downstream queries
+- **No metadata**: Skip `*_quote`, `*_rationale`, `_confidence` columns
+- **Evidence-based**: Base your decision on inspection results, not assumptions
+- **Empty list is valid**: If no columns need canonicalization, return an empty list
+
+Now, inspect the table and identify which non-primary-key columns should be canonicalized.
